@@ -1,0 +1,426 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="description" content="200个纯前端实用工具：文本处理、编码加密、单位换算、日期时间、随机生成、开发辅助等，无需联网。">
+<title>全能工具箱 · 200 个实用工具</title>
+<style>
+:root{--bg:#f5f7fa;--card:#fff;--tx:#233;--sub:#7a8699;--pri:#3b82f6;--bd:#e3e8f0}
+@media(prefers-color-scheme:dark){:root{--bg:#14171c;--card:#1d222a;--tx:#e6e9ef;--sub:#8b95a7;--bd:#2a303b}}
+*{box-sizing:border-box}
+body{margin:0;font:15px/1.6 system-ui,-apple-system,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif;background:var(--bg);color:var(--tx)}
+header,nav,main{max-width:1200px;margin:auto}
+header{padding:24px 16px 8px}
+h1{margin:0;font-size:24px}
+.sub{color:var(--sub);font-size:13px;margin:4px 0 14px}
+#q{width:100%;padding:10px 14px;border:1px solid var(--bd);border-radius:10px;background:var(--card);color:var(--tx);font-size:14px;outline:none}
+#q:focus{border-color:var(--pri)}
+nav{display:flex;gap:8px;flex-wrap:wrap;padding:12px 16px}
+nav button{border:1px solid var(--bd);background:var(--card);color:var(--tx);padding:6px 13px;border-radius:20px;cursor:pointer;font-size:13px}
+nav button.on{background:var(--pri);border-color:var(--pri);color:#fff}
+main{padding:4px 16px 40px;display:grid;grid-template-columns:repeat(auto-fill,minmax(232px,1fr));gap:10px}
+.card{text-align:left;background:var(--card);border:1px solid var(--bd);border-radius:12px;padding:12px 14px;cursor:pointer;color:var(--tx);display:flex;flex-direction:column;gap:3px;transition:.15s;font-family:inherit}
+.card:hover{transform:translateY(-2px);border-color:var(--pri);box-shadow:0 6px 18px rgba(59,130,246,.15)}
+.card b{font-size:15px}.card span{font-size:12px;color:var(--sub)}.card i{font-size:11px;color:var(--pri);font-style:normal}
+dialog{border:none;border-radius:14px;padding:20px;width:min(720px,92vw);background:var(--card);color:var(--tx);box-shadow:0 20px 60px rgba(0,0,0,.35)}
+dialog::backdrop{background:rgba(0,0,0,.45)}
+#dtitle{margin:0 0 2px;font-size:19px}#ddesc{margin:0 0 14px;font-size:13px;color:var(--sub)}
+.fld{margin-bottom:10px}.fld label{display:block;font-size:13px;color:var(--sub);margin-bottom:4px}
+textarea,input[type=text],input[type=number],select{width:100%;padding:8px 10px;border:1px solid var(--bd);border-radius:8px;background:var(--bg);color:var(--tx);font:14px/1.5 ui-monospace,Consolas,monospace;outline:none}
+textarea:focus,input:focus,select:focus{border-color:var(--pri)}
+textarea{resize:vertical;min-height:70px}
+.chk{display:flex;align-items:center;gap:6px;font-size:14px;margin-bottom:8px;cursor:pointer}
+.row{display:flex;gap:8px;flex-wrap:wrap;margin:12px 0}
+.row button{padding:9px 18px;border-radius:9px;border:1px solid var(--bd);background:var(--card);color:var(--tx);cursor:pointer;font-size:14px}
+.row button.pri{background:var(--pri);border-color:var(--pri);color:#fff}
+pre#dout{white-space:pre-wrap;word-break:break-all;background:var(--bg);border:1px solid var(--bd);border-radius:10px;padding:12px;min-height:56px;max-height:46vh;overflow:auto;font:13px/1.7 ui-monospace,Consolas,monospace;margin:0}
+#toast{position:fixed;left:50%;bottom:30px;transform:translateX(-50%);background:rgba(17,17,17,.85);color:#fff;padding:7px 18px;border-radius:20px;font-size:13px;opacity:0;transition:.3s;pointer-events:none;z-index:9}
+#toast.show{opacity:1}
+footer{text-align:center;color:var(--sub);font-size:12px;padding:8px 0 30px}
+</style>
+</head>
+<body>
+<header>
+  <h1>🧰 全能工具箱</h1>
+  <div class="sub">共 <b id="cnt">0</b> 个实用工具 · 纯前端运行 · 数据不出浏览器 · 支持搜索</div>
+  <input id="q" placeholder="🔍 搜索工具，如：base64、时间戳、换算、密码……">
+</header>
+<nav id="cats"></nav>
+<main id="grid"></main>
+<dialog id="dlg">
+  <h2 id="dtitle"></h2>
+  <p id="ddesc"></p>
+  <div id="dform"></div>
+  <div class="row"><button class="pri" id="run">运行 ▶</button><button id="clr">清空</button><button id="copy">复制结果</button><button id="close">关闭</button></div>
+  <pre id="dout">结果将显示在这里…</pre>
+</dialog>
+<div id="toast"></div>
+<footer>单文件工具箱 · 可自由部署到 GitHub Pages</footer>
+<script>
+"use strict";
+/* ================= 基础设施 ================= */
+const $=q=>document.querySelector(q);
+const T=[];
+const mk=(cat,name,desc,ins,fn)=>T.push({cat,name,desc,ins,fn});
+const TA={k:'s',t:'ta',l:'输入文本',r:7};
+const F={
+  ta:(k,l,r)=>({k,l,t:'ta',r:r||6}),
+  in:(k,l,ph)=>({k,l,t:'in',ph:ph||''}),
+  num:(k,l,v)=>({k,l,t:'num',v:v===undefined?0:v}),
+  sel:(k,l,o)=>({k,l,t:'sel',o}),
+  chk:(k,l,v)=>({k,l,t:'chk',v:!!v})
+};
+const TT=(n,d,f)=>mk('文本',n,d,[TA],v=>f(v.s));
+const EC=(n,d,f)=>mk('编码',n,d,[TA],v=>f(v.s));
+const r2=x=>Math.round(x*100)/100;
+const fmtn=x=>{if(!isFinite(x))return '—';if(x!==0&&(Math.abs(x)<1e-9||Math.abs(x)>=1e15))return x.toExponential(6);return String(parseFloat(x.toFixed(10)));};
+const nums=s=>s.split(/[\s,;，；、|]+/).map(x=>parseFloat(x)).filter(x=>!isNaN(x));
+const ri=(a,b)=>Math.floor(Math.random()*(b-a+1))+a;
+const pick=a=>a[Math.floor(Math.random()*a.length)];
+const shuffle=a=>{a=a.slice();for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]];}return a;};
+const W='日一二三四五六';
+/* UTF-8 手工编解码（不依赖 TextEncoder，全环境可用） */
+function utf8b(s){const o=[];for(const ch of s){let c=ch.codePointAt(0);if(c<128)o.push(c);else if(c<2048)o.push(192|c>>6,128|c&63);else if(c<65536)o.push(224|c>>12,128|(c>>6)&63,128|c&63);else o.push(240|c>>18,128|(c>>12)&63,128|(c>>6)&63,128|c&63);}return Uint8Array.from(o);}
+function utf8d(b){let s='',i=0;while(i<b.length){const c=b[i++];if(c<128)s+=String.fromCharCode(c);else if(c<224)s+=String.fromCharCode((c&31)<<6|b[i++]&63);else if(c<240)s+=String.fromCharCode((c&15)<<12|(b[i++]&63)<<6|b[i++]&63);else{const cp=((c&7)<<18|(b[i++]&63)<<12|(b[i++]&63)<<6|b[i++]&63)-0x10000;s+=String.fromCharCode(0xD800+(cp>>10),0xDC00+(cp&1023));}}return s;}
+const B=s=>utf8b(s).length;
+/* MD5（纯 JS 实现，已验证） */
+function md5(str){
+  const b=utf8b(str),n=b.length,total=Math.ceil((n+9)/64)*64,m=new Uint8Array(total);m.set(b);m[n]=0x80;
+  const dv=new DataView(m.buffer);dv.setUint32(total-8,(n%536870912)*8,true);dv.setUint32(total-4,Math.floor(n/536870912),true);
+  let a0=1732584193,b0=-271733879,c0=-1732584194,d0=271733878;
+  const K=[],S=[7,12,17,22,7,12,17,22,7,12,17,22,7,12,17,22,5,9,14,20,5,9,14,20,5,9,14,20,5,9,14,20,4,11,16,23,4,11,16,23,4,11,16,23,4,11,16,23,6,10,15,21,6,10,15,21,6,10,15,21,6,10,15,21];
+  for(let i=0;i<64;i++)K[i]=Math.floor(Math.abs(Math.sin(i+1))*4294967296);
+  for(let off=0;off<total;off+=64){
+    const M=[];for(let j=0;j<16;j++)M[j]=dv.getUint32(off+j*4,true);
+    let A=a0,Bb=b0,C=c0,D=d0;
+    for(let i=0;i<64;i++){
+      let f,g;
+      if(i<16){f=(Bb&C)|(~Bb&D);g=i;}
+      else if(i<32){f=(D&Bb)|(~D&C);g=(5*i+1)%16;}
+      else if(i<48){f=Bb^C^D;g=(3*i+5)%16;}
+      else{f=C^(Bb|~D);g=(7*i)%16;}
+      f=(f+A+M[g]+K[i])|0;
+      A=D;D=C;C=Bb;Bb=(Bb+((f<<S[i])|(f>>>(32-S[i]))))|0;
+    }
+    a0=(a0+A)|0;b0=(b0+Bb)|0;c0=(c0+C)|0;d0=(d0+D)|0;
+  }
+  const w=x=>[0,8,16,24].map(sh=>(((x>>>sh)&255).toString(16)).padStart(2,'0')).join('');
+  return w(a0)+w(b0)+w(c0)+w(d0);
+}
+function b64e(s){const b=utf8b(s);let t='';for(let i=0;i<b.length;i++)t+=String.fromCharCode(b[i]);return btoa(t);}
+function b64d(s){try{const t=atob(s.replace(/\s+/g,''));const u=new Uint8Array(t.length);for(let i=0;i<t.length;i++)u[i]=t.charCodeAt(i);return utf8d(u);}catch(e){return '❌ 不是有效的 Base64：'+e.message;}}
+async function shaHex(algo,s){if(!(typeof crypto!=='undefined'&&crypto.subtle))return '⚠️ 当前环境不支持 Web Crypto（需在 https 页面使用）';const h=await crypto.subtle.digest(algo,utf8b(s));return [...new Uint8Array(h)].map(x=>x.toString(16).padStart(2,'0')).join('');}
+function caesar(s,sh){return s.replace(/[a-zA-Z]/g,c=>{const b=c<='Z'?65:97;return String.fromCharCode((c.charCodeAt(0)-b+(sh%26)+26)%26+b);});}
+const MORSE={A:'.-',B:'-...',C:'-.-.',D:'-..',E:'.',F:'..-.',G:'--.',H:'....',I:'..',J:'.---',K:'-.-',L:'.-..',M:'--',N:'-.',O:'---',P:'.--.',Q:'--.-',R:'.-.',S:'...',T:'-',U:'..-',V:'...-',W:'.--',X:'-..-',Y:'-.--',Z:'--..',0:'-----',1:'.----',2:'..---',3:'...--',4:'....-',5:'.....',6:'-....',7:'--...',8:'---..',9:'----.','.':'.-.-.-',',':'--..--','?':'..--..',"'":'.----.','!':'-.-.--','/':'-..-.','(':'-.--.',')':'-.--.-','&':'.-...',':':'---...',';':'-.-.-.','=':'-...-','+':'.-.-.','-':'-....-','_':'..--.-','"':'.-..-.','$':'...-..-','@':'.--.-.'};
+const REV_MORSE=Object.fromEntries(Object.entries(MORSE).map(([k,v])=>[v,k]));
+const morseE=s=>s.toUpperCase().split(' ').map(w=>[...w].map(c=>MORSE[c]||'?').join(' ')).join(' / ');
+const morseD=s=>s.trim().split(/\s*\/\s*/).map(w=>w.split(/\s+/).map(m=>REV_MORSE[m]||'?').join('')).join(' ');
+const escE=s=>s.replace(/[^\x21-\x7E]/g,c=>'%u'+c.charCodeAt(0).toString(16).toUpperCase().padStart(4,'0'));
+const escD=s=>s.replace(/%u([0-9a-fA-F]{4})/g,(m,h)=>String.fromCharCode(parseInt(h,16)));
+const ROMANS=[[1000,'M'],[900,'CM'],[500,'D'],[400,'CD'],[100,'C'],[90,'XC'],[50,'L'],[40,'XL'],[10,'X'],[9,'IX'],[5,'V'],[4,'IV'],[1,'I']];
+const toRoman=n=>{if(!(n>0&&n<4000))return '请输入 1-3999 的整数';let r='';for(const[v,s]of ROMANS){while(n>=v){r+=s;n-=v;}}return r;};
+function fromRoman(s0){let s=s0.toUpperCase().replace(/[^IVXLCDM]/g,''),i=0,r=0;for(const[v,sy]of ROMANS){while(s.startsWith(sy,i)){r+=v;i+=sy.length;}}return i===s.length&&r>0?String(r):'❌ 无效的罗马数字（剩余：'+s.slice(i)+'）';}
+function luhn(s0){const d=s0.replace(/\D/g,'');if(d.length<10)return '请输入至少10位数字的卡号';let sum=0,alt=false;for(let i=d.length-1;i>=0;i--){let n=+d[i];if(alt){n*=2;if(n>9)n-=9;}sum+=n;alt=!alt;}return sum%10===0?'✅ 通过 Luhn 校验（格式有效）\n卡号：'+d+'（共 '+d.length+' 位）':'❌ 未通过 Luhn 校验（卡号可能输入有误）';}
+const IDW=[7,9,10,5,8,4,2,1,6,3,7,9,10,5,8,4,2],IDC='10X98765432';
+function idCheck(s0){const s=s0.trim().toUpperCase();if(!/^\d{17}[\dX]$/.test(s))return '❌ 格式错误：应为 18 位（前17位数字，末位数字或X）';let sum=0;for(let i=0;i<17;i++)sum+=+s[i]*IDW[i];const ok=IDC[sum%11]===s[17];
+ const y=+s.slice(6,10),m=+s.slice(10,12),d=+s.slice(12,14);const dt=new Date(y,m-1,d);const dateOk=dt.getFullYear()===y&&dt.getMonth()===m-1&&dt.getDate()===d&&y>1900;
+ return (ok&&dateOk?'✅ 校验通过':'❌ 校验失败')+'（校验位'+(ok?'正确':'错误')+(dateOk?'，出生日期 '+y+'-'+String(m).padStart(2,'0')+'-'+String(d).padStart(2,'0'):'，出生日期可疑')+'，性别：'+((+s[16])%2?'男':'女')+'）';}
+function isbn(s0){const d=s0.replace(/[^\dXx]/g,'').toUpperCase();if(d.length===10){let sum=0;for(let i=0;i<10;i++){const v=d[i]==='X'?10:+d[i];sum+=v*(10-i);}return sum%11===0?'✅ ISBN-10 有效':'❌ ISBN-10 无效';}if(d.length===13){let sum=0;for(let i=0;i<13;i++)sum+=(+d[i])*(i%2?3:1);return sum%10===0?'✅ ISBN-13 有效':'❌ ISBN-13 无效';}return '❌ 请输入 10 位或 13 位 ISBN';}
+function gcdF(a,b){a=Math.abs(a);b=Math.abs(b);while(b){[a,b]=[b,a%b];}return a||1;}
+function frac(x){if(Number.isInteger(x))return String(x);const d=String(x).split('.')[1]||'';const den=Math.pow(10,d.length);let num=Math.round(x*den);const g=gcdF(Math.abs(num),den);return (num/g)+'/'+(den/g);}
+function parseCSV(txt){const rows=[];let row=[],cur='',q=false;for(let i=0;i<txt.length;i++){const c=txt[i];if(q){if(c==='"'){if(txt[i+1]==='"'){cur+='"';i++;}else q=false;}else cur+=c;}else if(c==='"')q=true;else if(c===','){row.push(cur);cur='';}else if(c==='\n'){row.push(cur);rows.push(row);row=[];cur='';}else if(c!=='\r')cur+=c;}if(cur!==''||row.length){row.push(cur);rows.push(row);}return rows;}
+function evalExpr(x){
+  const S=x.replace(/×/g,'*').replace(/÷/g,'/').replace(/π/g,'pi');
+  const toks=S.match(/[A-Za-z]+/g)||[];
+  const allow=['sqrt','cbrt','sin','cos','tan','asin','acos','atan','abs','round','floor','ceil','log','ln','log10','pow','min','max','pi','PI','e','E','exp','sign'];
+  for(const t of toks)if(!allow.includes(t))return '❌ 不支持的符号：'+t;
+  const e=S.replace(/\bpi\b/gi,'Math.PI').replace(/\be\b/g,'Math.E')
+    .replace(/\bln\b/g,'Math.log').replace(/\blog10\b/g,'Math.log10').replace(/\blog\b/g,'Math.log10')
+    .replace(/\bsqrt\b/g,'Math.sqrt').replace(/\bcbrt\b/g,'Math.cbrt').replace(/\bexp\b/g,'Math.exp')
+    .replace(/\b(sin|cos|tan|asin|acos|atan|abs|round|floor|ceil|sign)\b/g,'Math.$1')
+    .replace(/\bpow\b/g,'Math.pow').replace(/\bmax\b/g,'Math.max').replace(/\bmin\b/g,'Math.min')
+    .replace(/\^/g,'**');
+  try{const r=Function('"use strict";return('+e+')')();if(typeof r!=='number'||!isFinite(r))return '无法计算（结果不是有限数字）';return '= '+(Number.isInteger(r)?r:parseFloat(r.toFixed(10)));}catch(err){return '❌ 表达式错误：'+err.message;}
+}
+function hex2hsl(hex){hex=hex.replace('#','');if(hex.length===3)hex=[...hex].map(c=>c+c).join('');if(!/^[0-9a-f]{6}$/i.test(hex))return null;const n=parseInt(hex,16);let r=(n>>16&255)/255,g=(n>>8&255)/255,b=(n&255)/255;const mx=Math.max(r,g,b),mn=Math.min(r,g,b);let h=0,s=0,l=(mx+mn)/2;const d=mx-mn;if(d){s=l>0.5?d/(2-mx-mn):d/(mx+mn);if(mx===r)h=(g-b)/d+(g<b?6:0);else if(mx===g)h=(b-r)/d+2;else h=(r-g)/d+4;h*=60;}return [Math.round(h),Math.round(s*100),Math.round(l*100)];}
+function hsl2hex(h,s,l){s/=100;l/=100;const a=s*Math.min(l,1-l);const f=n=>{const k=(n+h/30)%12;return Math.round(255*(l-a*Math.max(-1,Math.min(k-3,9-k,1)))).toString(16).padStart(2,'0');};return '#'+f(0)+f(8)+f(4);}
+function zod(m,d){const Z=[[1,20,'水瓶座'],[2,19,'双鱼座'],[3,21,'白羊座'],[4,20,'金牛座'],[5,21,'双子座'],[6,22,'巨蟹座'],[7,23,'狮子座'],[8,23,'处女座'],[9,23,'天秤座'],[10,24,'天蝎座'],[11,23,'射手座'],[12,22,'摩羯座']];let r='摩羯座';for(const[mm,dd,z]of Z){if(m>mm||(m===mm&&d>=dd))r=z;}return r;}
+function isoWeek(d){const t=new Date(Date.UTC(d.getFullYear(),d.getMonth(),d.getDate()));const dn=(t.getUTCDay()+6)%7;t.setUTCDate(t.getUTCDate()-dn+3);const f=new Date(Date.UTC(t.getUTCFullYear(),0,4));const fd=(f.getUTCDay()+6)%7;f.setUTCDate(f.getUTCDate()-fd+3);return 1+Math.round((t-f)/604800000);}
+const leap=y=>(y%4===0&&y%100!==0)||y%400===0;
+const pad2=n=>String(n).padStart(2,'0');
+const pd=s=>{const m=/(\d{4})[-/.年](\d{1,2})[-/.月](\d{1,2})/.exec((s||'').trim());if(!m)return null;const d=new Date(+m[1],+m[2]-1,+m[3]);return isNaN(d)?null:d;};
+const fmtD=d=>d.getFullYear()+'-'+pad2(d.getMonth()+1)+'-'+pad2(d.getDate());
+const fmtT=d=>fmtD(d)+' '+pad2(d.getHours())+':'+pad2(d.getMinutes())+':'+pad2(d.getSeconds());
+function diffLines(a,b){const A=a.split('\n'),Bb=b.split('\n');if(A.length*Bb.length>400000)return '（文本过大，暂不支持精确对比）';const n=A.length,m=Bb.length,dp=[];for(let i=0;i<=n;i++)dp.push(new Uint16Array(m+1));for(let i=n-1;i>=0;i--)for(let j=m-1;j>=0;j--)dp[i][j]=A[i]===Bb[j]?dp[i+1][j+1]+1:Math.max(dp[i+1][j],dp[i][j+1]);let i=0,j=0,out=[];while(i<n&&j<m){if(A[i]===Bb[j]){out.push('  '+A[i]);i++;j++;}else if(dp[i+1][j]>=dp[i][j+1])out.push('- '+A[i++]);else out.push('+ '+Bb[j++]);}while(i<n)out.push('- '+A[i++]);while(j<m)out.push('+ '+Bb[j++]);return out.join('\n');}
+function rmb(n){
+  if(!isFinite(n))return '请输入有效数字';
+  const D='零壹贰叁肆伍陆柒捌玖',U=['','拾','佰','仟'];
+  const neg=n<0;n=Math.abs(n);
+  const cents=Math.round(n*100),yuan=Math.floor(cents/100),jiao=Math.floor(cents/10)%10,fen=cents%10;
+  if(yuan>=1e16)return '数值过大（暂支持小于 10^16）';
+  const sec=p=>{let s='',zero=false;const ds=String(p).split('').map(Number);for(let i=0;i<ds.length;i++){const d=ds[i],u=ds.length-1-i;if(d===0)zero=true;else{s+=(zero&&s.length?'零':'')+D[d]+U[u];zero=false;}}return s;};
+  const BU=['','万','亿','万亿'];
+  let g=[],y=yuan;while(y>0){g.push(y%10000);y=Math.floor(y/10000);}
+  let s='';
+  for(let i=g.length-1;i>=0;i--){const p=g[i];if(p===0){if(s.length&&!s.endsWith('零'))s+='零';continue;}if(s.length&&!s.endsWith('零')&&p<1000)s+='零';s+=sec(p)+BU[i];}
+  s=s.replace(/零+$/,'')||'零';
+  let r=(neg?'负':'')+s+'元';
+  if(jiao===0&&fen===0)r+='整';else{if(jiao>0)r+=D[jiao]+'角';if(fen>0)r+=(jiao===0?'零':'')+D[fen]+'分';}
+  return r;
+}
+/* 随机数据生成 */
+const SURN='赵钱孙李周吴郑王冯陈褚卫蒋沈韩杨朱秦许何吕施张孔曹严华金魏陶姜谢邹喻柏水窦章云苏潘葛'.split('');
+const GIVEN='伟芳娜秀英敏静丽强磊军洋勇艳杰娟涛明超霞平刚桂华文辉力宏宇轩浩然欣怡子涵雨桐思远晨曦'.split('');
+const rname=()=>pick(SURN)+pick(GIVEN)+(Math.random()<0.5?pick(GIVEN):'');
+const rphone=()=>pick(['138','139','150','151','158','159','186','188','189','177','176','133','135','136','137','152','182','183','185','187'])+String(ri(0,99999999)).padStart(8,'0');
+const remail=()=>{const L='abcdefghijklmnopqrstuvwxyz';let s=pick([...L]);const n=ri(5,9);for(let i=0;i<n;i++)s+=pick([...L,'1234567890']);return s+'@'+pick(['163.com','qq.com','gmail.com','outlook.com','126.com','foxmail.com']);};
+const REGIONS=[['北京市','朝阳区'],['上海市','浦东新区'],['广东省','深圳市'],['广东省','广州市'],['浙江省','杭州市'],['江苏省','南京市'],['四川省','成都市'],['湖北省','武汉市'],['湖南省','长沙市'],['陕西省','西安市'],['福建省','厦门市'],['河南省','郑州市'],['山东省','青岛市'],['辽宁省','沈阳市'],['重庆市','渝北区'],['天津市','和平区']];
+const STREETS=['人民路','建设路','中山路','解放路','幸福路','长江路','黄河路','文化路','光明路','和平路','科技园路','创业大道'];
+const raddr=()=>{const p=pick(REGIONS);return p[0]+p[1]+pick(STREETS)+ri(1,999)+'号';};
+/* 单位换算表 */
+const fmtU=(base,units)=>Object.keys(units).map(k=>units[k].n+'：'+fmtn(base/units[k].f)).join('\n');
+const U_TOOL=(n,d,units)=>mk('转换',n,d,[F.num('v','数值',1),F.sel('u','原单位',Object.keys(units).map(k=>[k,units[k].n]))],v=>{const f=parseFloat(v.v);if(isNaN(f))return '❌ 请输入数字';return '换算结果：\n'+fmtU(f*units[v.u].f,units);});
+const U_LEN={m:{n:'米',f:1},km:{n:'千米',f:1000},cm:{n:'厘米',f:.01},mm:{n:'毫米',f:.001},in:{n:'英寸',f:.0254},ft:{n:'英尺',f:.3048},yd:{n:'码',f:.9144},mi:{n:'英里',f:1609.344},nmi:{n:'海里',f:1852},lid:{n:'里',f:500},chi:{n:'尺',f:1/3},zhang:{n:'丈',f:10/3}};
+const U_WGT={kg:{n:'千克',f:1},g:{n:'克',f:.001},mg:{n:'毫克',f:1e-6},t:{n:'吨',f:1000},lb:{n:'磅',f:.45359237},oz:{n:'盎司',f:.028349523125},jin:{n:'斤',f:.5},liang:{n:'两',f:.05},qian:{n:'钱',f:.005}};
+const U_AREA={m2:{n:'平方米',f:1},km2:{n:'平方千米',f:1e6},ha:{n:'公顷',f:10000},cm2:{n:'平方厘米',f:.0001},mu:{n:'亩',f:666.66666667},ft2:{n:'平方英尺',f:.09290304},yd2:{n:'平方码',f:.83612736},acre:{n:'英亩',f:4046.8564224},mi2:{n:'平方英里',f:2589988.110336}};
+const U_VOL={l:{n:'升',f:1},ml:{n:'毫升',f:.001},m3:{n:'立方米',f:1000},cm3:{n:'立方厘米',f:.001},gal_us:{n:'加仑(美)',f:3.785411784},qt_us:{n:'夸脱(美)',f:.946352946},pt_us:{n:'品脱(美)',f:.473176473},cup:{n:'杯(美)',f:.2365882365},oz_us:{n:'液量盎司(美)',f:.0295735295625},gal_uk:{n:'加仑(英)',f:4.54609}};
+const U_SPD={'ms':{n:'米/秒',f:1},kmh:{n:'千米/时',f:1/3.6},mph:{n:'英里/时',f:.44704},knot:{n:'节',f:.514444444},fts:{n:'英尺/秒',f:.3048},mach:{n:'马赫',f:340}};
+const U_DATA={b:{n:'字节(B)',f:1},bit:{n:'比特(bit)',f:.125},kb:{n:'KB',f:1024},mb:{n:'MB',f:1048576},gb:{n:'GB',f:1073741824},tb:{n:'TB',f:1099511627776},pb:{n:'PB',f:1125899906842624}};
+const U_TIME={ms:{n:'毫秒',f:.001},s:{n:'秒',f:1},min:{n:'分钟',f:60},h:{n:'小时',f:3600},d:{n:'天',f:86400},wk:{n:'周',f:604800},yr:{n:'年(365天)',f:31536000}};
+const U_ENERGY={j:{n:'焦耳(J)',f:1},kj:{n:'千焦(kJ)',f:1000},cal:{n:'卡(cal)',f:4.184},kcal:{n:'千卡(kcal)',f:4184},wh:{n:'瓦时(Wh)',f:3600},kwh:{n:'千瓦时(kWh)',f:3600000}};
+
+/* ================= ① 文本处理（50） ================= */
+TT('字符统计','统计字符/单词/行数/字节',s=>{const ch=[...s].length,nows=s.replace(/\s/g,'').length,lines=s.split(/\r?\n/).length,words=(s.match(/[A-Za-z]+(?:['-][A-Za-z]+)*/g)||[]).length,cjk=(s.match(/[\u4e00-\u9fa5]/g)||[]).length;return '字符数：'+ch+'\n不含空白：'+nows+'\n行数：'+lines+'\n英文单词数：'+words+'\n汉字数：'+cjk+'\nUTF-8 字节数：'+B(s);});
+TT('词频统计','统计词/双字词出现频率（Top30）',s=>{const m={};const words=s.match(/[A-Za-z0-9_']+/g)||[];words.forEach(w=>{w=w.toLowerCase();m[w]=(m[w]||0)+1;});(s.match(/[\u4e00-\u9fa5]+/g)||[]).forEach(run=>{for(let i=0;i<run.length-1;i++){const g=run.slice(i,i+2);m[g]=(m[g]||0)+1;}});const top=Object.entries(m).sort((a,b)=>b[1]-a[1]).slice(0,30);return top.length?top.map(([w,c])=>w+'  × '+c).join('\n'):'未识别到可统计的词';});
+TT('转大写','全部转为大写',s=>s.toUpperCase());
+TT('转小写','全部转为小写',s=>s.toLowerCase());
+TT('每句首字母大写','英文句子首字母大写',s=>s.toLowerCase().replace(/(^\s*|[.!?。！？]\s*)([a-z])/g,(m,p,c)=>p+c.toUpperCase()));
+TT('每词首字母大写','每个单词首字母大写',s=>s.replace(/(^|\s)(\S)/g,(m,sp,ch)=>sp+ch.toUpperCase()));
+TT('大小写反转','大写变小写，小写变大写',s=>[...s].map(c=>c===c.toUpperCase()?c.toLowerCase():c.toUpperCase()).join(''));
+TT('交替大小写','字母大小写交替',s=>{let i=0;return s.replace(/[a-zA-Z]/g,c=>i++%2?c.toLowerCase():c.toUpperCase());});
+TT('反转文本','整个文本倒序',s=>[...s].reverse().join(''));
+TT('反转每行','每行内容倒序',s=>s.split('\n').map(l=>[...l].reverse().join('')).join('\n'));
+TT('单词倒序','每行单词顺序颠倒',s=>s.split('\n').map(l=>l.split(/\s+/).reverse().join(' ')).join('\n'));
+TT('行倒序','所有行前后颠倒',s=>s.split('\n').reverse().join('\n'));
+TT('去除重复行','保留出现顺序的唯一样式',s=>[...new Set(s.split('\n'))].join('\n'));
+TT('行升序排序','按字典序升序（中文按拼音）',s=>s.split('\n').sort((a,b)=>a.localeCompare(b,'zh')).join('\n'));
+TT('行降序排序','按字典序降序',s=>s.split('\n').sort((a,b)=>b.localeCompare(a,'zh')).join('\n'));
+TT('行随机打乱','随机重排所有行',s=>shuffle(s.split('\n')).join('\n'));
+TT('去除空行','删掉空白行',s=>s.split('\n').filter(l=>l.trim()!=='').join('\n'));
+TT('清理行首尾空格','每行 trim',s=>s.split('\n').map(l=>l.trim()).join('\n'));
+TT('合并多余空格','连续空格/制表符合并为一个',s=>s.replace(/[ \t]+/g,' ').replace(/ +\n/g,'\n'));
+TT('删除所有空格','删除全部空格与制表符',s=>s.replace(/[ \t]+/g,''));
+TT('删除所有换行','把所有行合并为一行',s=>s.replace(/\r?\n/g,''));
+TT('每行加序号','给每行添加行号',s=>{const L=s.split('\n'),w=String(L.length).length;return L.map((l,i)=>String(i+1).padStart(w,' ')+'. '+l).join('\n');});
+TT('删除行首序号','去掉行首的 1. / 2、 等编号',s=>s.split('\n').map(l=>l.replace(/^\s*\d+\s*[.、)）:：\]]?\s*/,'')).join('\n'));
+mk('文本','每行加前缀','在每行开头加内容',[F.ta('a','输入文本'),F.in('b','前缀','如：> ') ],v=>v.a.split('\n').map(l=>v.b+l).join('\n'));
+mk('文本','每行加后缀','在每行末尾加内容',[F.ta('a','输入文本'),F.in('b','后缀','如：；')],v=>v.a.split('\n').map(l=>l+v.b).join('\n'));
+mk('文本','文本重复N次','把文本重复 N 遍',[F.ta('a','输入文本'),F.num('n','重复次数',3)],v=>{const n=Math.max(1,Math.min(50,parseInt(v.n)||1));return Array(n).fill(v.a).join('\n');});
+mk('文本','文本替换','字面量查找并全部替换',[F.ta('a','输入文本'),F.in('b','查找内容'),F.in('c','替换为')],v=>{if(!v.b)return '❌ 请输入要查找的内容';return v.a.split(v.b).join(v.c);});
+mk('文本','正则替换','用正则表达式替换',[F.ta('a','输入文本'),F.in('b','正则表达式','如：\\d+'),F.in('c','替换为')],v=>{try{return v.a.replace(new RegExp(v.b,'g'),v.c);}catch(e){return '❌ 正则错误：'+e.message;}});
+TT('提取邮箱','找出文本中所有邮箱',s=>{const m=s.match(/[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}/g)||[];return m.length?'共 '+m.length+' 个：\n'+m.join('\n'):'未找到邮箱';});
+TT('提取网址','找出所有 http(s) 链接',s=>{const m=s.match(/https?:\/\/[^\s<>"'）)，。；、]+/g)||[];return m.length?'共 '+m.length+' 个：\n'+m.join('\n'):'未找到网址';});
+TT('提取数字','找出所有数字（含小数/负数）',s=>{const m=s.match(/-?\d+(?:\.\d+)?/g)||[];return m.length?m.join('\n'):'未找到数字';});
+TT('提取中文','只保留中文内容',s=>{const m=s.match(/[\u4e00-\u9fa5]+/g)||[];return m.length?m.join('\n'):'未找到中文';});
+TT('提取英文单词','找出所有英文单词',s=>{const m=s.match(/[A-Za-z]+(?:['’-][A-Za-z]+)*/g)||[];return m.length?m.join('\n'):'未找到英文单词';});
+TT('去除HTML标签','剥离标签只留纯文本',s=>s.replace(/<script[\s\S]*?<\/script>/gi,'').replace(/<style[\s\S]*?<\/style>/gi,'').replace(/<[^>]*>/g,'').replace(/&nbsp;/g,' ').trim());
+TT('HTML转义','特殊字符转 HTML 实体',s=>s.replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m])));
+TT('HTML反转义','HTML 实体还原为字符',s=>s.replace(/&(amp|lt|gt|quot|#39|nbsp);/g,m=>({'&amp;':'&','&lt;':'<','&gt;':'>','&quot;':'"','&#39;':"'",'&nbsp;':' '}[m])).replace(/&#(\d+);/g,(m,n)=>String.fromCodePoint(+n)));
+mk('文本','按分隔符分行','把分隔符换成换行',[F.ta('a','输入文本'),F.in('b','分隔符',',')],v=>{if(!v.b)return '❌ 请输入分隔符';return v.a.split(v.b).join('\n');});
+mk('文本','按长度折行','每 N 个字符换行',[F.ta('a','输入文本'),F.num('n','每行字符数',40)],v=>{const n=Math.max(1,parseInt(v.n)||40);return v.a.split('\n').map(line=>{const out=[];for(let i=0;i<line.length;i+=n)out.push(line.slice(i,i+n));return out.join('\n');}).join('\n');});
+TT('删除标点符号','只保留文字数字与空白',s=>s.replace(/[^\w\s\u4e00-\u9fa5]/g,''));
+TT('转URL别名','生成 URL 友好的 slug',s=>s.trim().toLowerCase().replace(/['"]/g,'').replace(/[^a-z0-9\u4e00-\u9fa5]+/g,'-').replace(/^-+|-+$/g,''));
+TT('转camelCase','转小驼峰命名',s=>{const w=s.replace(/([a-z0-9])([A-Z])/g,'$1 $2').split(/[^A-Za-z0-9]+/).filter(Boolean);return w.length?w[0].toLowerCase()+w.slice(1).map(x=>x[0].toUpperCase()+x.slice(1).toLowerCase()).join(''):'';});
+TT('转snake_case','转下划线命名',s=>s.replace(/([a-z0-9])([A-Z])/g,'$1 $2').split(/[^A-Za-z0-9]+/).filter(Boolean).join('_').toLowerCase());
+TT('转kebab-case','转短横线命名',s=>s.replace(/([a-z0-9])([A-Z])/g,'$1 $2').split(/[^A-Za-z0-9]+/).filter(Boolean).join('-').toLowerCase());
+TT('转PascalCase','转大驼峰命名',s=>s.replace(/([a-z0-9])([A-Z])/g,'$1 $2').split(/[^A-Za-z0-9]+/).filter(Boolean).map(x=>x[0].toUpperCase()+x.slice(1).toLowerCase()).join(''));
+TT('转CONSTANT_CASE','转常量命名',s=>s.replace(/([a-z0-9])([A-Z])/g,'$1 $2').split(/[^A-Za-z0-9]+/).filter(Boolean).join('_').toUpperCase());
+TT('全角转半角','全角字符转半角',s=>s.replace(/[\uff01-\uff5e]/g,c=>String.fromCharCode(c.charCodeAt(0)-0xfee0)).replace(/\u3000/g,' '));
+TT('半角转全角','半角字符转全角',s=>s.replace(/[\x21-\x7e]/g,c=>String.fromCharCode(c.charCodeAt(0)+0xfee0)).replace(/ /g,'\u3000'));
+TT('单词去重','以空白分词并去重',s=>[...new Set(s.split(/\s+/).filter(Boolean))].join(' '));
+mk('文本','指定词计数','统计某词语出现的次数',[F.ta('a','输入文本'),F.in('b','要统计的词')],v=>{if(!v.b)return '❌ 请输入要统计的词';let n=0,i=0;while((i=v.a.indexOf(v.b,i))!==-1){n++;i+=v.b.length;}const ci=v.a.toLowerCase().split(v.b.toLowerCase()).length-1;return '“'+v.b+'” 出现：'+n+' 次（忽略大小写：'+ci+' 次）';});
+mk('文本','文本差异对比','逐行对比两段文本',[F.ta('a','文本 A',7),F.ta('b','文本 B',7)],v=>{if(v.a===v.b)return '✅ 两段文本完全一致';return ' 前缀=相同  - =仅A有  + =仅B有\n\n'+diffLines(v.a,v.b);});
+/* ================= ② 编码加密（25） ================= */
+EC('Base64编码','文本 → Base64',s=>b64e(s));
+EC('Base64解码','Base64 → 文本',s=>b64d(s));
+EC('URL编码','文本 → URL 组件编码',s=>encodeURIComponent(s));
+EC('URL解码','URL 编码 → 文本',s=>{try{return decodeURIComponent(s);}catch(e){return '❌ 编码无效：'+e.message;}});
+EC('MD5哈希','生成 32 位 MD5 摘要',s=>md5(s));
+EC('SHA-1哈希','生成 SHA-1 摘要（HTTPS 环境）',s=>shaHex('SHA-1',s));
+EC('SHA-256哈希','生成 SHA-256 摘要（HTTPS 环境）',s=>shaHex('SHA-256',s));
+EC('SHA-512哈希','生成 SHA-512 摘要（HTTPS 环境）',s=>shaHex('SHA-512',s));
+EC('JWT解码','解析 JWT 的 Header 与 Payload',s=>{const p=s.trim().split('.');if(p.length<2)return '❌ 不是有效的 JWT（应形如 a.b.c）';const d=x=>{try{const b=x.replace(/-/g,'+').replace(/_/g,'/');return utf8d(Uint8Array.from(atob(b+'='.repeat((4-b.length%4)%4)),c=>c.charCodeAt(0)));}catch(e){return '(无法解析)';}};const pretty=x=>{const t=d(x);try{return JSON.stringify(JSON.parse(t),null,2);}catch(e){return t;}};return '【Header】\n'+pretty(p[0])+'\n\n【Payload】\n'+pretty(p[1])+'\n\n【Signature】\n'+(p[2]||'(无)');});
+EC('Unicode转义编码','中文 → \\uXXXX 形式',s=>[...s].map(c=>'\\u'+c.charCodeAt(0).toString(16).padStart(4,'0')).join(''));
+EC('Unicode转义解码','\\uXXXX → 中文',s=>s.replace(/\\u\{([0-9a-f]+)\}|\\u([0-9a-f]{4})/gi,(m,a,b)=>String.fromCodePoint(parseInt(a||b,16))));
+EC('文本转二进制','UTF-8 字节 → 二进制串',s=>[...utf8b(s)].map(b=>b.toString(2).padStart(8,'0')).join(' '));
+EC('二进制转文本','二进制串 → 文本',s=>{const t=/\s/.test(s.trim())?s.trim().split(/\s+/):(s.replace(/\s/g,'').match(/.{8}/g)||[]);const u=[];for(const x of t){if(!/^[01]{1,8}$/.test(x))return '❌ 含有非二进制字符：'+x;u.push(parseInt(x,2));}return utf8d(Uint8Array.from(u));});
+EC('文本转十六进制','UTF-8 字节 → 十六进制',s=>[...utf8b(s)].map(b=>b.toString(16).padStart(2,'0').toUpperCase()).join(' '));
+EC('十六进制转文本','十六进制 → 文本',s=>{const h=s.replace(/0x/gi,'').replace(/[^0-9a-fA-F]/g,'');if(h.length%2)return '❌ 十六进制长度应为偶数';const u=[];for(let i=0;i<h.length;i+=2)u.push(parseInt(h.slice(i,i+2),16));return utf8d(Uint8Array.from(u));});
+EC('文本转八进制','UTF-8 字节 → 八进制',s=>[...utf8b(s)].map(b=>b.toString(8).padStart(3,'0')).join(' '));
+EC('八进制转文本','八进制 → 文本',s=>{const t=/\s/.test(s.trim())?s.trim().split(/\s+/):(s.replace(/\s/g,'').match(/.{1,3}/g)||[]);const u=[];for(const x of t){if(!/^[0-7]{1,3}$/.test(x))return '❌ 含有非八进制字符：'+x;u.push(parseInt(x,8));}return utf8d(Uint8Array.from(u));});
+EC('ROT13','英文字母旋转 13 位',s=>caesar(s,13));
+mk('编码','凯撒密码','字母按位移量加密/解密',[TA,F.num('n','位移量（1-25）',3),F.sel('m','模式',[['enc','加密'],['dec','解密']])],v=>{const n=(parseInt(v.n)||3)%26;return caesar(v.s,v.m==='dec'?-n:n);});
+EC('摩斯编码','英文/数字 → 摩斯电码',s=>morseE(s));
+EC('摩斯解码','摩斯电码 → 英文/数字',s=>morseD(s));
+EC('文本转ASCII码','字符 → 十进制码点',s=>{const c=[...s].map(ch=>ch.codePointAt(0));return c.join(' ')+(c.some(x=>x>127)?'\n\n※ 含非 ASCII 字符，已按 Unicode 码点输出':'');});
+EC('ASCII码转文本','十进制码点 → 字符',s=>{const a=s.split(/[\s,，]+/).filter(Boolean).map(Number);if(a.some(isNaN))return '❌ 请输入用空格分隔的数字';try{return a.map(x=>String.fromCodePoint(x)).join('');}catch(e){return '❌ 含无效码点';}});
+EC('Escape编码','非 ASCII → %uXXXX 形式',s=>escE(s));
+EC('Escape解码','%uXXXX → 文本',s=>escD(s));
+/* ================= ③ 转换计算（25） ================= */
+mk('转换','进制转换','2/8/10/16/36 进制互转',[F.in('v','数值','FF'),F.sel('f','原进制',[['2','2 进制'],['8','8 进制'],['10','10 进制'],['16','16 进制'],['36','36 进制']]),F.sel('t','目标进制',[['2','2 进制'],['8','8 进制'],['10','10 进制'],['16','16 进制'],['36','36 进制']])],v=>{const x=parseInt(v.v.trim().replace(/^0x/i,''),+v.f);if(isNaN(x))return '❌ 无法解析，检查数值与进制是否匹配';return '主结果（'+v.f+' → '+v.t+' 进制）：\n'+x.toString(+v.t).toUpperCase()+'\n\n其他进制：\n2进制：'+x.toString(2)+'\n8进制：'+x.toString(8)+'\n10进制：'+x.toString(10)+'\n16进制：'+x.toString(16).toUpperCase();});
+U_TOOL('长度单位换算','米/千米/厘米/英寸/英里/里/尺…',U_LEN);
+U_TOOL('重量单位换算','千克/克/吨/磅/盎司/斤/两…',U_WGT);
+U_TOOL('面积单位换算','平方米/公顷/亩/英亩…',U_AREA);
+U_TOOL('体积单位换算','升/毫升/立方米/加仑/杯…',U_VOL);
+U_TOOL('速度单位换算','米每秒/千米每小时/英里每小时/节…',U_SPD);
+mk('转换','温度换算','摄氏/华氏/开尔文互换',[F.num('v','温度数值',25),F.sel('u','原单位',[['c','摄氏度 °C'],['f','华氏度 °F'],['k','开尔文 K']])],v=>{const x=parseFloat(v.v);if(isNaN(x))return '❌ 请输入数字';let c;if(v.u==='c')c=x;else if(v.u==='f')c=(x-32)*5/9;else c=x-273.15;return '摄氏度：'+fmtn(c)+' °C\n华氏度：'+fmtn(c*9/5+32)+' °F\n开尔文：'+fmtn(c+273.15)+' K';});
+U_TOOL('数据存储换算','B/KB/MB/GB/TB（1024进制）',U_DATA);
+U_TOOL('时间单位换算','毫秒/秒/分钟/小时/天/周/年',U_TIME);
+mk('转换','角度弧度换算','度 ↔ 弧度',[F.num('v','数值',180),F.sel('m','方向',[['d2r','度 → 弧度'],['r2d','弧度 → 度']])],v=>{const x=parseFloat(v.v)||0;if(v.m==='d2r')return x+'° = '+fmtn(x*Math.PI/180)+' 弧度（rad）\n对照：180° = '+fmtn(Math.PI)+' rad';return x+' rad = '+fmtn(x*180/Math.PI)+'°\n对照：'+fmtn(Math.PI)+' rad = 180°';});
+mk('转换','数字转罗马数字','整数 → 罗马数字（1-3999）',[F.num('n','整数',2024)],v=>toRoman(parseInt(v.n)||0));
+mk('转换','罗马数字转数字','罗马数字 → 整数',[F.in('v','罗马数字','MCMXCIV')],v=>fromRoman(v.v));
+mk('转换','百分比计算','x 占 y 的百分之几',[F.num('x','数值 x',25),F.num('y','总数 y',200)],v=>{const x=parseFloat(v.x)||0,y=parseFloat(v.y)||0;if(y===0)return '❌ 总数不能为 0';return x+' 占 '+y+' 的 '+r2(x/y*100)+'%\n'+y+' 的 '+x+'% = '+r2(y*x/100);});
+mk('转换','百分比变化','从 A 到 B 变化了多少',[F.num('a','原值 A',100),F.num('b','新值 B',120)],v=>{const a=parseFloat(v.a)||0,b=parseFloat(v.b)||0;if(a===0)return '❌ 原值不能为 0';const p=(b-a)/a*100;return '变化量：'+fmtn(b-a)+'\n变化率：'+r2(Math.abs(p))+'%（'+(p>0?'↑ 增长':p<0?'↓ 减少':'不变')+'）';});
+mk('转换','折扣计算','原价 + 减免百分比',[F.num('p','原价（元）',100),F.num('d','优惠力度（%）',20)],v=>{const p=parseFloat(v.p)||0,d=parseFloat(v.d)||0;return '优惠金额：'+r2(p*d/100)+' 元\n实付金额：'+r2(p*(1-d/100))+' 元';});
+mk('转换','小费计算','账单 + 小费比例',[F.num('p','账单金额',200),F.num('d','小费比例（%）',10)],v=>{const p=parseFloat(v.p)||0,d=parseFloat(v.d)||0;return '小费：'+r2(p*d/100)+' 元\n合计：'+r2(p*(1+d/100))+' 元';});
+mk('转换','单价比较','比较两种规格的单价',[F.num('p1','商品1 总价',19.9),F.num('q1','商品1 数量',500),F.num('p2','商品2 总价',35),F.num('q2','商品2 数量',1000)],v=>{const p1=parseFloat(v.p1)||0,q1=parseFloat(v.q1)||0,p2=parseFloat(v.p2)||0,q2=parseFloat(v.q2)||0;if(!q1||!q2)return '❌ 数量不能为 0';const u1=p1/q1,u2=p2/q2;return '商品1 单价：'+fmtn(u1)+' 元/单位\n商品2 单价：'+fmtn(u2)+' 元/单位\n'+(u1<u2?'✅ 商品1 更划算（便宜 '+r2((1-u1/u2)*100)+'%）':u2<u1?'✅ 商品2 更划算（便宜 '+r2((1-u2/u1)*100)+'%）':'两者单价相同');});
+mk('转换','账单分摊','含小费 AA 制',[F.num('t','账单总额',300),F.num('n','人数',3),F.num('p','小费比例（%）',0)],v=>{const t=parseFloat(v.t)||0,n=Math.max(1,parseInt(v.n)||1),p=parseFloat(v.p)||0;const total=t*(1+p/100);return '含小费总额：'+r2(total)+' 元\n每人应付：'+r2(total/n)+' 元（'+n+' 人）';});
+mk('转换','小数转分数','0.375 → 3/8',[F.in('v','小数','0.375')],v=>{const x=parseFloat(v.v);if(isNaN(x))return '❌ 请输入小数，如 0.375';return x+' = '+frac(x);});
+mk('转换','分数转小数','3/8 → 0.375',[F.in('v','分数','3/8')],v=>{const t=v.v.trim();if(t.includes('/')){const[a,b]=t.split('/').map(parseFloat);if(!b)return '❌ 分母不能为 0';return t+' = '+fmtn(a/b)+' ≈ '+r2(a/b*100)+'%';}const x=parseFloat(t);return isNaN(x)?'❌ 请输入 3/8 这样的分数':t+' = '+x;});
+mk('转换','科学计数法','普通数字 ↔ 科学计数法',[F.in('v','数值','0.000052'),F.sel('m','模式',[['e','转科学计数法'],['n','转普通数字']])],v=>{if(v.m==='e'){const x=parseFloat(v.v);return isNaN(x)?'❌ 请输入数字':x.toExponential(6).replace(/\.?0+e/,'e');}const x=Number(v.v.trim());return isNaN(x)?'❌ 请输入数字':String(x);});
+mk('转换','千分位格式化','1234567.89 → 1,234,567.89',[F.in('v','数值','1234567.89'),F.sel('m','模式',[['a','添加千分位'],['d','去除千分位']])],v=>{if(v.m==='d')return v.v.replace(/,/g,'');const t=v.v.trim();if(!/^-?[\d.]+$/.test(t))return '❌ 请输入数字';const neg=t.startsWith('-')?'-':'';const[x,y]=t.replace('-','').split('.');return neg+x.replace(/\B(?=(\d{3})+(?!\d))/g,',')+(y!==undefined?'.'+y:'');});
+mk('转换','数字转中文大写','1234.56 → 壹仟贰佰叁拾肆元伍角陆分',[F.num('n','金额（元）',1234.56)],v=>rmb(parseFloat(v.n)));
+mk('转换','比例求解','a : b = c : x 求 x',[F.num('a','a',3),F.num('b','b',8),F.num('c','c',12)],v=>{const a=parseFloat(v.a)||0,b=parseFloat(v.b)||0,c=parseFloat(v.c)||0;if(a===0)return '❌ a 不能为 0';return v.a+' : '+v.b+' = '+v.c+' : x\nx = '+fmtn(b*c/a);});
+U_TOOL('能量换算','焦耳/卡/千卡/瓦时/千瓦时',U_ENERGY);
+/* ================= ④ 日期时间（12） ================= */
+mk('日期','时间戳转日期','10位/13位时间戳 → 日期',[F.in('v','时间戳','1700000000')],v=>{const n=parseFloat(v.v);if(isNaN(n))return '❌ 请输入时间戳数字';const isSec=Math.abs(n)<1e11;const d=new Date(isSec?n*1000:n);if(isNaN(d))return '❌ 无效时间戳';return '识别为：'+(isSec?'秒级（10位）':'毫秒级（13位）')+'\n本地时间：'+fmtT(d)+'（周'+W[d.getDay()]+'）\nISO/UTC：'+d.toISOString();});
+mk('日期','日期转时间戳','日期 → 秒/毫秒时间戳',[F.in('d','日期时间','2024-01-01 08:00:00')],v=>{const m=/(\d{4})[-/.](\d{1,2})[-/.](\d{1,2})(?:[ T](\d{1,2}):(\d{1,2})(?::(\d{1,2}))?)?/.exec(v.d||'');if(!m)return '❌ 格式应为 2024-01-01 或 2024-01-01 08:00:00';const d=new Date(+m[1],+m[2]-1,+m[3],+(m[4]||0),+(m[5]||0),+(m[6]||0));return '秒级时间戳：'+Math.floor(d.getTime()/1000)+'\n毫秒级时间戳：'+d.getTime();});
+mk('日期','当前时间戳','查看此刻的时间戳',[],()=>{const d=new Date();return '秒级：'+Math.floor(Date.now()/1000)+'\n毫秒级：'+Date.now()+'\n本地时间：'+fmtT(d)+'（周'+W[d.getDay()]+'）\nUTC：'+d.toISOString();});
+mk('日期','日期间隔天数','两个日期相差多少天',[F.in('a','开始日期','2024-01-01'),F.in('b','结束日期','2024-12-31')],v=>{let d1=pd(v.a),d2=pd(v.b);if(!d1||!d2)return '❌ 日期格式应为 YYYY-MM-DD';if(d2<d1)[d1,d2]=[d2,d1];const days=Math.round((d2-d1)/864e5);return '间隔：'+days+' 天\n约 '+(days/7).toFixed(1)+' 周 / '+(days/30.44).toFixed(1)+' 个月';});
+mk('日期','日期增减','日期加/减 N 天月年',[F.in('d','起始日期','2024-01-01'),F.num('n','数量',30),F.sel('u','单位',[['天','天'],['周','周'],['月','月'],['年','年']])],v=>{const d=pd(v.d);if(!d)return '❌ 日期格式应为 YYYY-MM-DD';const n=parseInt(v.n)||0;if(v.u==='天')d.setDate(d.getDate()+n);else if(v.u==='周')d.setDate(d.getDate()+n*7);else if(v.u==='月')d.setMonth(d.getMonth()+n);else d.setFullYear(d.getFullYear()+n);return '结果：'+fmtD(d)+'（周'+W[d.getDay()]+'）';});
+mk('日期','年龄计算','周岁 / 下次生日倒计时',[F.in('b','出生日期','1995-06-15')],v=>{const d=pd(v.b),n=new Date();if(!d)return '❌ 生日格式应为 YYYY-MM-DD';if(d>n)return '❌ 生日不能晚于今天';let y=n.getFullYear()-d.getFullYear(),m=n.getMonth()-d.getMonth(),dd=n.getDate()-d.getDate();if(dd<0){m--;dd+=new Date(n.getFullYear(),n.getMonth(),0).getDate();}if(m<0){y--;m+=12;}let nb=new Date(n.getFullYear(),d.getMonth(),d.getDate());if(nb<n)nb=new Date(n.getFullYear()+1,d.getMonth(),d.getDate());const left=Math.round((nb-n)/864e5);return '周岁：'+y+' 岁 '+m+' 个月 '+dd+' 天\n出生：'+fmtD(d)+'（周'+W[d.getDay()]+'）\n距下次生日还有 '+left+' 天（满 '+(y+1)+' 岁）\n生肖（近似）：'+'鼠牛虎兔龙蛇马羊猴鸡狗猪'[(d.getFullYear()-4+120)%12];});
+mk('日期','星座查询','按月日查星座',[F.num('m','月份',8),F.num('d','日期',8)],v=>{const m=parseInt(v.m)||1,d=parseInt(v.d)||1;if(m<1||m>12||d<1||d>31)return '❌ 月/日无效';return m+' 月 '+d+' 日 → '+zod(m,d);});
+mk('日期','生肖查询','按公历年份查生肖（近似）',[F.num('y','年份',2024)],v=>{let y=parseInt(v.y)||0;if(y<1900||y>2100)return '❌ 请输入 1900-2100 之间的年份';return y+' 年 生肖：'+'鼠牛虎兔龙蛇马羊猴鸡狗猪'[((y-4)%12+12)%12]+'\n（按公历年初近似，若在春节前后请以农历为准）';});
+mk('日期','星期几查询','查看某天是星期几',[F.in('d','日期','2024-01-01')],v=>{const d=pd(v.d);if(!d)return '❌ 日期格式应为 YYYY-MM-DD';const wd=d.getDay();return fmtD(d)+' 是 星期'+W[wd]+(wd===0||wd===6?'（周末 🎉）':'（工作日）');});
+mk('日期','年内第几天/周','一年中的位置信息',[F.in('d','日期','2024-06-01')],v=>{const d=pd(v.d);if(!d)return '❌ 日期格式应为 YYYY-MM-DD';const y=d.getFullYear();const start=new Date(y,0,1);const doy=Math.round((new Date(y,d.getMonth(),d.getDate())-start)/864e5)+1;const total=leap(y)?366:365;return y+' 年\n第 '+doy+' 天 / 共 '+total+' 天\nISO 第 '+isoWeek(d)+' 周\n年内已过 '+r2(doy/total*100)+'%，还剩 '+(total-doy)+' 天';});
+mk('日期','闰年判断','判断是否闰年',[F.num('y','年份',2024)],v=>{const y=parseInt(v.y)||0;if(!y)return '❌ 请输入年份';let n=y;while(!leap(n))n++;return y+' 年 '+(leap(y)?'是闰年 ✅（2月有29天）':'不是闰年 ❌（2月28天）')+'\n下一个闰年：'+n;});
+mk('日期','工作日计算','两个日期之间的工作日数',[F.in('a','开始日期','2024-01-01'),F.in('b','结束日期','2024-01-31')],v=>{let d1=pd(v.a),d2=pd(v.b);if(!d1||!d2)return '❌ 日期格式应为 YYYY-MM-DD';if(d2<d1)[d1,d2]=[d2,d1];let work=0,week=0,cur=new Date(d1),guard=0;while(cur<d2&&guard++<36600){const wd=cur.getDay();if(wd===0||wd===6)week++;else work++;cur.setDate(cur.getDate()+1);}return '工作日：'+work+' 天\n周末日：'+week+' 天\n总计：'+Math.round((d2-d1)/864e5)+' 天\n※ 未排除法定节假日与调休';});
+/* ================= ⑤ 随机生成（15） ================= */
+mk('生成','随机密码','可配置字符集，一次生成 8 个',[F.num('n','长度',16),F.chk('up','含大写字母',true),F.chk('lo','含小写字母',true),F.chk('di','含数字',true),F.chk('sy','含符号',false)],v=>{let pool='',need=[];const UP='ABCDEFGHIJKLMNOPQRSTUVWXYZ',LO='abcdefghijklmnopqrstuvwxyz',DI='0123456789',SY='!@#$%^&*()-_=+[]{};:,.<>?/|~';if(v.up){pool+=UP;need.push(UP);}if(v.lo){pool+=LO;need.push(LO);}if(v.di){pool+=DI;need.push(DI);}if(v.sy){pool+=SY;need.push(SY);}if(!pool){pool=LO+UP+DI;}const len=Math.max(4,Math.min(128,parseInt(v.n)||16));const out=[];for(let k=0;k<8;k++){let a=need.map(s=>pick([...s]));while(a.length<len)a.push(pick([...pool]));out.push(shuffle(a).join(''));}return out.join('\n');});
+mk('生成','UUID生成','生成 v4 UUID',[F.num('n','生成数量',3)],v=>{const N=Math.max(1,Math.min(50,parseInt(v.n)||1));const out=[];for(let i=0;i<N;i++){out.push((typeof crypto!=='undefined'&&crypto.randomUUID)?crypto.randomUUID():'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g,c=>{const r=Math.random()*16|0;return(c==='x'?r:(r&3|8)).toString(16);}));}return out.join('\n');});
+mk('生成','随机字符串','生成随机字符序列',[F.num('n','长度',24),F.sel('t','字符集',[['an','大小写字母+数字'],['lo','小写字母'],['up','大写字母'],['d','数字'],['h','十六进制'],['s','含符号']])],v=>{const SETS={an:'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789',lo:'abcdefghijklmnopqrstuvwxyz',up:'ABCDEFGHIJKLMNOPQRSTUVWXYZ',d:'0123456789',h:'0123456789abcdef',s:'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*-_=+'};const len=Math.max(1,Math.min(256,parseInt(v.n)||24));let out='';for(let i=0;i<len;i++)out+=pick([...SETS[v.t]]);return out;});
+mk('生成','Lorem占位文本','生成英文占位段落',[F.num('n','段落数',3)],v=>{const S=['Lorem ipsum dolor sit amet, consectetur adipiscing elit.','Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.','Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris.','Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore.','Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt.','Nemo enim ipsam voluptatem quia voluptas sit aspernatur aut odit aut fugit.'];const N=Math.max(1,Math.min(20,parseInt(v.n)||3));const out=[];for(let i=0;i<N;i++){const c=ri(3,5);let p='';for(let j=0;j<c;j++)p+=pick(S)+' ';out.push(p.trim());}return out.join('\n\n');});
+mk('生成','随机姓名','批量生成中文演示姓名',[F.num('n','数量',10)],v=>{const N=Math.max(1,Math.min(100,parseInt(v.n)||10));const out=[];for(let i=0;i<N;i++)out.push(rname());return out.join('\n');});
+mk('生成','随机邮箱','生成演示用邮箱地址',[F.num('n','数量',10)],v=>{const N=Math.max(1,Math.min(100,parseInt(v.n)||10));const out=[];for(let i=0;i<N;i++)out.push(remail());return out.join('\n');});
+mk('生成','随机手机号','生成演示用手机号（勿用于非法用途）',[F.num('n','数量',10)],v=>{const N=Math.max(1,Math.min(100,parseInt(v.n)||10));const out=[];for(let i=0;i<N;i++)out.push(rphone());return out.join('\n')+'\n\n※ 仅为格式演示，随机生成，非真实号码';});
+mk('生成','随机地址','生成演示用收货地址',[F.num('n','数量',10)],v=>{const N=Math.max(1,Math.min(100,parseInt(v.n)||10));const out=[];for(let i=0;i<N;i++)out.push(raddr());return out.join('\n');});
+mk('生成','随机颜色','随机 HEX + RGB 颜色',[F.num('n','数量',5)],v=>{const N=Math.max(1,Math.min(50,parseInt(v.n)||5));const out=[];for(let i=0;i<N;i++){const r=ri(0,255),g=ri(0,255),b=ri(0,255);out.push('#'+((r<<16|g<<8|b)>>>0).toString(16).padStart(6,'0')+'   rgb('+r+', '+g+', '+b+')');}return out.join('\n');});
+mk('生成','配色方案生成','由基色生成互补/类似/三色配色',[F.in('v','基色 HEX','#409eff')],v=>{const h=hex2hsl(v.v);if(!h)return '❌ 请输入形如 #409eff 的颜色';const[hue,s,l]=h;const mk1=(dh,name)=>{const hx=hsl2hex(((hue+dh)%360+360)%360,s,l);const rgb=hex2rgbT(hx);return name+'：'+hx+'  rgb('+rgb+')';};return '原色：'+hsl2hex(hue,s,l)+'  rgb('+hex2rgbT(hsl2hex(hue,s,l))+')（HSL '+hue+', '+s+'%, '+l+'%）\n\n'+[mk1(180,'互补色'),mk1(30,'类似色 +30°'),mk1(-30,'类似色 -30°'),mk1(120,'三色 +120°'),mk1(-120,'三色 -120°'),mk1(150,'分裂互补 +150°'),mk1(-150,'分裂互补 -150°')].join('\n');});
+mk('生成','CSS渐变','生成 linear-gradient 代码',[F.in('c1','颜色1','#3b82f6'),F.in('c2','颜色2','#8b5cf6'),F.num('a','角度(deg)',135)],v=>'background: linear-gradient('+(parseInt(v.a)||0)+'deg, '+v.c1.trim()+', '+v.c2.trim()+');');
+mk('生成','CSS阴影','生成 box-shadow 代码',[F.num('x','X 偏移(px)',0),F.num('y','Y 偏移(px)',4),F.num('b','模糊(px)',12),F.num('s','扩散(px)',0),F.in('c','颜色','#00000040')],v=>'box-shadow: '+(parseFloat(v.x)||0)+'px '+(parseFloat(v.y)||0)+'px '+(parseFloat(v.b)||0)+'px '+(parseFloat(v.s)||0)+'px '+v.c.trim()+';');
+mk('生成','CSS圆角','生成 border-radius 代码',[F.num('v','圆角(px)',12)],v=>'border-radius: '+(parseFloat(v.v)||0)+'px;');
+mk('生成','随机IP地址','生成随机 IPv4 地址',[F.num('n','数量',5)],v=>{const N=Math.max(1,Math.min(50,parseInt(v.n)||5));const out=[];for(let i=0;i<N;i++)out.push(ri(1,223)+'.'+ri(0,255)+'.'+ri(0,255)+'.'+ri(1,254));return out.join('\n');});
+mk('生成','假数据CSV','生成姓名/手机/邮箱/地址/生日表格',[F.num('n','行数',10)],v=>{const N=Math.max(1,Math.min(200,parseInt(v.n)||10));const out=['姓名,手机号,邮箱,地址,生日'];for(let i=0;i<N;i++){out.push([rname(),rphone(),remail(),raddr(),ri(1970,2005)+'-'+pad2(ri(1,12))+'-'+pad2(ri(1,28))].map(x=>/[",\n]/.test(x)?'"'+x.replace(/"/g,'""')+'"':x).join(','));}return out.join('\n');});
+function hex2rgbT(hex){const h=hex.replace('#','');const n=parseInt(h,16);return(r=n>>16&255)+', '+(n>>8&255)+', '+(n&255);}
+/* ================= ⑥ 开发工具（25） ================= */
+mk('开发','JSON格式化','美化输出 JSON',[TA],v=>{try{return JSON.stringify(JSON.parse(v.s),null,2);}catch(e){return '❌ JSON 无效：'+e.message;}});
+mk('开发','JSON压缩','去除所有空白的 JSON',[TA],v=>{try{return JSON.stringify(JSON.parse(v.s));}catch(e){return '❌ JSON 无效：'+e.message;}});
+mk('开发','JSON校验','检查 JSON 合法性并统计',[TA],v=>{try{const o=JSON.parse(v.s);const cnt=x=>{let n=1;if(x&&typeof x==='object')for(const k in x)n+=cnt(x[k]);return n;};return '✅ JSON 合法\n根类型：'+(Array.isArray(o)?'数组':typeof o)+'\n节点总数：'+cnt(o)+'\n字符数：'+v.s.length;}catch(e){return '❌ JSON 无效：'+e.message;}});
+mk('开发','JSON转CSV','JSON 数组 → CSV 表格',[TA],v=>{let o;try{o=JSON.parse(v.s);}catch(e){return '❌ JSON 无效：'+e.message;}if(!Array.isArray(o))return '❌ 需要 JSON 数组（对象列表），如 [{"a":1},{"a":2}]';const keys=[];o.forEach(r=>Object.keys(r).forEach(k=>{if(!keys.includes(k))keys.push(k);}));const q=x=>{x=x==null?'':String(x);return/[",\n]/.test(x)?'"'+x.replace(/"/g,'""')+'"':x;};return[keys.join(','),...o.map(r=>keys.map(k=>q(r[k])).join(','))].join('\n');});
+mk('开发','CSV转JSON','CSV 表格 → JSON 数组',[TA],v=>{const rows=parseCSV(v.s.trim());if(rows.length<2)return '❌ 至少需要两行（表头 + 数据）';const head=rows[0];const arr=rows.slice(1).map(r=>{const o={};head.forEach((k,i)=>o[k]=r[i]!==undefined?r[i]:'');return o;});return JSON.stringify(arr,null,2);});
+mk('开发','JSON键提取','列出所有键的路径',[TA],v=>{let r;try{r=JSON.parse(v.s);}catch(e){return '❌ JSON 无效：'+e.message;}const out=[];(function w(o,p){if(o&&typeof o==='object'){if(Array.isArray(o))o.forEach((x,i)=>w(x,p+'['+i+']'));else Object.keys(o).forEach(k=>w(o[k],p?p+'.'+k:k));}else out.push(p+' = '+JSON.stringify(o));})(r,'');return(out.length?out.slice(0,300).join('\n'):'(空对象)')+(out.length>300?'\n…（共 '+out.length+' 项，已截断）':'');});
+mk('开发','JSON键排序','按键名递归排序输出',[TA],v=>{try{const o=JSON.parse(v.s,(k,val)=>{if(val&&typeof val==='object'&&!Array.isArray(val)){const n={};Object.keys(val).sort().forEach(k2=>n[k2]=val[k2]);return n;}return val;});return JSON.stringify(o,null,2);}catch(e){return '❌ JSON 无效：'+e.message;}});
+mk('开发','XML转JSON','XML → JSON 结构',[TA],v=>{const d=new DOMParser().parseFromString(v.s,'text/xml');if(d.querySelector('parsererror'))return '❌ XML 解析失败，请检查格式';const w=n=>{const o={};if(n.attributes)for(const a of n.attributes)o['@'+a.name]=a.value;const ks=[...n.children];if(!ks.length){const t=n.textContent.trim();return Object.keys(o).length?Object.assign(o,t?{'#text':t}:{}):t;}for(const k of ks){const val=w(k);if(k.tagName in o){if(!Array.isArray(o[k.tagName]))o[k.tagName]=[o[k.tagName]];o[k.tagName].push(val);}else o[k.tagName]=val;}return o;};return JSON.stringify(w(d.documentElement),null,2);});
+mk('开发','XML格式化','美化 XML 缩进',[TA],v=>{const d=new DOMParser().parseFromString(v.s,'text/xml');if(d.querySelector('parsererror'))return '❌ XML 解析失败，请检查格式';let x=v.s.replace(/>\s+</g,'><').replace(/></g,'>\n<');let ind=0;const L=x.split('\n').map(line=>{const l=line.trim();if(!l)return '';let out;if(/^<\//.test(l)){ind=Math.max(0,ind-1);out='  '.repeat(ind)+l;}else if(/^<[^!?/]/.test(l)&&!/\/>$/.test(l)&&!/<\/[^>]*>$/.test(l)){out='  '.repeat(ind)+l;ind++;}else out='  '.repeat(ind)+l;return out;});return L.filter(x=>x!=='').join('\n');});
+mk('开发','Markdown转HTML','轻量 Markdown → HTML',[TA],v=>{let t=v.s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');t=t.replace(/```([\s\S]*?)```/g,(m,c)=>'<pre><code>'+c.replace(/^\n/,'')+'</code></pre>');const lines=t.split('\n');const out=[];let inUl=false,inOl=false;const closeList=()=>{if(inUl){out.push('</ul>');inUl=false;}if(inOl){out.push('</ol>');inOl=false;}};for(const l of lines){const h=/^(#{1,6})\s+(.*)$/.exec(l),ul=/^[-*+]\s+(.*)$/.exec(l),ol=/^\d+\.\s+(.*)$/.exec(l);if(/^<pre>/.test(l)||/<\/pre>/.test(l)){closeList();out.push(l);continue;}if(h){closeList();out.push('<h'+h[1].length+'>'+h[2]+'</h'+h[1].length+'>');}else if(/^---+\s*$/.test(l)){closeList();out.push('<hr>');}else if(ul){if(!inUl){closeList();out.push('<ul>');inUl=true;}out.push('<li>'+ul[1]+'</li>');}else if(ol){if(!inOl){closeList();out.push('<ol>');inOl=true;}out.push('<li>'+ol[1]+'</li>');}else if(/^>\s?/.test(l)){closeList();out.push('<blockquote>'+l.replace(/^>\s?/,'')+'</blockquote>');}else if(l.trim()===''){closeList();}else{closeList();out.push('<p>'+l+'</p>');}}closeList();let html=out.join('\n');html=html.replace(/\*\*(.+?)\*\*/g,'<b>$1</b>').replace(/\*(.+?)\*/g,'<i>$1</i>').replace(/`([^`]+)`/g,'<code>$1</code>').replace(/!\[([^\]]*)\]\(([^)]+)\)/g,'<img alt="$1" src="$2">').replace(/\[([^\]]+)\]\(([^)]+)\)/g,'<a href="$2">$1</a>');return html;});
+mk('开发','HTML转Markdown','粗略 HTML → Markdown',[TA],v=>{let h=v.s.replace(/<script[\s\S]*?<\/script>/gi,'').replace(/<style[\s\S]*?<\/style>/gi,'');h=h.replace(/<h([1-6])[^>]*>([\s\S]*?)<\/h\1>/gi,(m,n1,c)=>'\n'+'#'.repeat(+n1)+' '+c+'\n');h=h.replace(/<a[^>]*href="([^"]*)"[^>]*>([\s\S]*?)<\/a>/gi,'[$2]($1)');h=h.replace(/<(strong|b)[^>]*>([\s\S]*?)<\/\1>/gi,'**$2**');h=h.replace(/<(em|i)[^>]*>([\s\S]*?)<\/\1>/gi,'*$2*');h=h.replace(/<code[^>]*>([\s\S]*?)<\/code>/gi,'`$1`');h=h.replace(/<li[^>]*>([\s\S]*?)<\/li>/gi,'- $1\n');h=h.replace(/<(br|hr)\s*\/?>/gi,'\n');h=h.replace(/<\/(p|div|ul|ol|h[1-6]|blockquote|tr)>/gi,'\n');h=h.replace(/<[^>]+>/g,'');h=h.replace(/&nbsp;/g,' ').replace(/&lt;/g,'<').replace(/&gt;/g,'>').replace(/&amp;/g,'&');return h.replace(/\n{3,}/g,'\n\n').trim();});
+mk('开发','正则测试','测试正则并列出匹配项',[F.ta('s','测试文本'),F.in('p','正则表达式','\\w+'),F.in('f','标志','g')],v=>{let re;try{const f=v.f.includes('g')?v.f:v.f+'g';re=new RegExp(v.p,f);}catch(e){return '❌ 正则错误：'+e.message;}const ms=[...v.s.matchAll(re)];if(!ms.length)return '没有匹配到结果';return '匹配数：'+ms.length+'\n\n'+ms.slice(0,50).map((m,i)=>'#'+(i+1)+'  位置 '+m.index+'\n  '+m[0]+(m.length>1?'\n  分组: '+m.slice(1).map((g,j)=>'$'+(j+1)+'='+g).join(', '):'')).join('\n\n')+(ms.length>50?'\n\n…（仅显示前 50 条）':'');});
+TT('正则元字符转义','把正则特殊字符转义为字面量',s=>s.replace(/[.*+?^${}()|[\]\\]/g,'\\$&'));
+mk('开发','URL解析','拆解 URL 各部分与参数',[F.in('s','网址','https://example.com/path?a=1&b=你好#top')],v=>{let u;try{u=new URL(/^https?:\/\//i.test(v.s)?v.s:'https://'+v.s);}catch(e){return '❌ 无法解析 URL';}const out=['协议：'+u.protocol,'主机：'+u.host,'主机名：'+u.hostname,'端口：'+(u.port||'(默认)'),'路径：'+u.pathname,'锚点：'+(u.hash||'(无)')];if(u.search){out.push('查询参数：');new URLSearchParams(u.search).forEach((val,key)=>out.push('  '+key+' = '+val));}return out.join('\n');});
+mk('开发','查询参数构造','key=value 多行 → URL 参数串',[F.ta('s','每行一个 key=value','page=1\nsize=20\nkeyword=工具箱')],v=>{const pairs=v.s.split('\n').map(l=>l.trim()).filter(Boolean).map(l=>{const i=l.indexOf('=');const k=i<0?l:l.slice(0,i),val=i<0?'':l.slice(i+1);return encodeURIComponent(k)+'='+encodeURIComponent(val);});return pairs.length?'?'+pairs.join('&'):'❌ 请输入 key=value 格式的文本';});
+mk('开发','HTTP状态码查询','常用 HTTP 状态码含义',[F.in('c','状态码','404')],v=>{const M={'100':'继续','101':'切换协议','200':'成功','201':'已创建','202':'已接受','204':'无内容','206':'部分内容','301':'永久重定向','302':'临时重定向','304':'未修改','307':'临时重定向（保持方法）','308':'永久重定向（保持方法）','400':'请求参数错误','401':'未授权（需登录）','403':'禁止访问','404':'资源未找到','405':'方法不允许','406':'不可接受','408':'请求超时','409':'资源冲突','410':'资源已删除','413':'请求体过大','414':'URI 过长','415':'媒体类型不支持','418':'我是茶壶 🫖','422':'无法处理的实体','429':'请求过于频繁','431':'请求头过大','500':'服务器内部错误','501':'功能未实现','502':'网关错误','503':'服务不可用','504':'网关超时','505':'HTTP 版本不支持'};const c=v.c.trim();if(!c)return Object.entries(M).map(([k,d])=>k+'  '+d).join('\n');return M[c]?c+'：'+M[c]:'未收录该状态码（可留空查看常用列表）';});
+mk('开发','MIME类型查询','扩展名 → MIME 类型',[F.in('e','扩展名','png')],v=>{const M={html:'text/html',htm:'text/html',css:'text/css',js:'application/javascript',mjs:'application/javascript',json:'application/json',xml:'application/xml',txt:'text/plain',csv:'text/csv',md:'text/markdown',pdf:'application/pdf',zip:'application/zip',rar:'application/vnd.rar','7z':'application/x-7z-compressed',tar:'application/x-tar',gz:'application/gzip',png:'image/png',jpg:'image/jpeg',jpeg:'image/jpeg',gif:'image/gif',svg:'image/svg+xml',webp:'image/webp',ico:'image/x-icon',bmp:'image/bmp',mp3:'audio/mpeg',wav:'audio/wav',ogg:'audio/ogg',mp4:'video/mp4',webm:'video/webm',avi:'video/x-msvideo',mov:'video/quicktime',woff:'font/woff',woff2:'font/woff2',ttf:'font/ttf',otf:'font/otf',doc:'application/msword',docx:'application/vnd.openxmlformats-officedocument.wordprocessingml.document',xls:'application/vnd.ms-excel',xlsx:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',ppt:'application/vnd.ms-powerpoint',pptx:'application/vnd.openxmlformats-officedocument.presentationml.presentation',apk:'application/vnd.android.package-archive',wasm:'application/wasm'};const e=v.e.trim().toLowerCase().replace(/^\./,'');if(!e)return Object.entries(M).map(([k,d])=>k+'  →  '+d).join('\n');return M[e]?e+'  →  '+M[e]:'未收录该扩展名（可留空查看常见列表）';});
+mk('开发','ASCII码表','可打印 ASCII 码速查',[],()=>{const out=[];for(let i=32;i<=126;i++)out.push(String(i).padStart(3,' ')+'  '+(i===32?'␣ 空格':String.fromCharCode(i)));return out.join('\n');});
+mk('开发','字符转Unicode','字符 ↔ U+码点 双向互转',[F.ta('s','输入字符或 U+XXXX 码点','中A😀 或 U+4E2D U+1F600')],v=>{const t=v.s.trim();if(/^(U\+[0-9a-f\s]+)+$/i.test(t)){const arr=t.split(/\s+/).map(x=>parseInt(x.replace(/U\+/i,''),16));if(arr.some(isNaN))return '❌ 码点格式错误';try{return arr.map(x=>String.fromCodePoint(x)).join(' ');}catch(e){return '❌ 含无效码点';}}return[...t].map(c=>'U+'+c.codePointAt(0).toString(16).toUpperCase().padStart(4,'0')).join(' ');});
+mk('开发','Git命令速查','常用 Git 命令一览',[],()=>['git init                     初始化仓库','git clone <url>              克隆仓库','git status                   查看状态','git add .                    暂存全部改动','git commit -m "msg"          提交','git log --oneline --graph    查看提交历史','git branch -a                查看分支','git checkout -b dev          新建并切换分支','git switch main              切换分支','git merge dev                合并分支','git pull origin main         拉取更新','git push origin main         推送代码','git remote -v                查看远程地址','git reset --hard HEAD^       回退到上一提交','git stash / git stash pop    暂存工作区','git diff                     查看未暂存改动','git restore <file>           撤销文件修改','git tag v1.0.0               打标签'].join('\n'));
+mk('开发','HEX转RGB','#409eff → rgb(64,158,255)',[F.in('v','HEX 颜色','#409eff')],v=>{const h=v.v.trim();const hsl=hex2hsl(h);if(!hsl)return '❌ 请输入形如 #409eff 或 #f00';return 'rgb('+hex2rgbT(hsl2hex(hsl[0],hsl[1],hsl[2]))+')\nhsl('+hsl.join(', ')+')\n规范化：'+hsl2hex(hsl[0],hsl[1],hsl[2]);});
+mk('开发','RGB转HEX','rgb(64,158,255) → #409eff',[F.in('v','RGB 值','64,158,255')],v=>{const a=v.v.split(/[\s,，]+/).filter(Boolean).map(Number);if(a.length<3||a.some(x=>isNaN(x)||x<0||x>255))return '❌ 请输入 0-255 的 R,G,B，如 64,158,255';return '#'+a.slice(0,3).map(x=>Math.round(x).toString(16).padStart(2,'0')).join('');});
+mk('开发','RGB与HSL互转','RGB ↔ HSL 双向转换',[F.in('v','输入 RGB 或 HEX','64,158,255 或 #409eff')],v=>{const t=v.v.trim();let h;if(t.startsWith('#'))h=hex2hsl(t);else{const a=t.split(/[\s,，]+/).filter(Boolean).map(Number);if(a.length<3||a.some(x=>isNaN(x)))return '❌ 请输入 64,158,255 或 #409eff';h=hex2hsl('#'+a.slice(0,3).map(x=>Math.max(0,Math.min(255,Math.round(x))).toString(16).padStart(2,'0')).join(''));}if(!h)return '❌ 输入格式不正确';return 'HSL：hsl('+h.join(', ')+')\nHEX：'+hsl2hex(h[0],h[1],h[2])+'\nRGB：rgb('+hex2rgbT(hsl2hex(h[0],h[1],h[2]))+')';});
+mk('开发','UTF-8字节序列','查看文本的 UTF-8 字节',[TA],v=>{const bytes=[...utf8b(v.s)];return '字节数：'+bytes.length+'\n\n'+bytes.map(b=>'0x'+b.toString(16).padStart(2,'0').toUpperCase()).join(' ');});
+mk('开发','代码行数统计','统计代码行/空行/注释行',[TA],v=>{const L=v.s.split('\n');let blank=0,comment=0,code=0;L.forEach(l=>{const t=l.trim();if(!t)blank++;else if(/^(\/\/|#|\/\*|\*|<!--|--)/.test(t))comment++;else code++;});return '总行数：'+L.length+'\n代码行：'+code+'\n注释行：'+comment+'\n空行：'+blank+'\n字符数：'+v.s.length+'\n最长行：'+Math.max(0,...L.map(l=>l.length))+' 字符';});
+/* ================= ⑦ 数学计算（25） ================= */
+mk('数学','表达式计算器','安全计算数学表达式',[F.in('v','表达式','(2+3)*4^2 + sqrt(16)')],v=>v.v.trim()?evalExpr(v.v):'❌ 请输入表达式');
+mk('数学','统计汇总','均值/中位数/众数等',[F.ta('s','数字（空格/逗号/换行分隔）','92 85 78 90 85')],v=>{const a=nums(v.s);if(!a.length)return '❌ 请输入数字';const sorted=[...a].sort((x,y)=>x-y);const sum=a.reduce((x,y)=>x+y,0);const mean=sum/a.length;const med=sorted.length%2?sorted[(sorted.length-1)/2]:(sorted[sorted.length/2-1]+sorted[sorted.length/2])/2;const cnt={};a.forEach(x=>cnt[x]=(cnt[x]||0)+1);const maxc=Math.max(...Object.values(cnt));const mode=maxc>1?Object.keys(cnt).filter(k=>cnt[k]===maxc).join(', '):'（无）';return '数量：'+a.length+'\n总和：'+fmtn(sum)+'\n平均：'+fmtn(mean)+'\n中位数：'+fmtn(med)+'\n众数：'+mode+'\n最小：'+fmtn(sorted[0])+'\n最大：'+fmtn(sorted[sorted.length-1]);});
+mk('数学','求和','数字列表求和',[F.ta('s','数字（空格/逗号/换行分隔）','1, 2, 3.5, 4')],v=>{const a=nums(v.s);if(!a.length)return '❌ 请输入数字';return '共 '+a.length+' 个数字\n总和 = '+fmtn(a.reduce((x,y)=>x+y,0));});
+mk('数学','方差与标准差','总体/样本方差计算',[F.ta('s','数字（空格/逗号/换行分隔）','2 4 4 4 5 5 7 9')],v=>{const a=nums(v.s);if(a.length<2)return '❌ 至少需要两个数字';const n=a.length,mean=a.reduce((x,y)=>x+y,0)/n;const pv=a.reduce((x,y)=>x+(y-mean)**2,0)/n;const sv=a.reduce((x,y)=>x+(y-mean)**2,0)/(n-1);return '平均：'+fmtn(mean)+'\n总体方差：'+fmtn(pv)+'\n总体标准差：'+fmtn(Math.sqrt(pv))+'\n样本方差：'+fmtn(sv)+'\n样本标准差：'+fmtn(Math.sqrt(sv));});
+mk('数学','最大最小值','找出一组数的上下限',[F.ta('s','数字（空格/逗号/换行分隔）','12, 7, 88, 3')],v=>{const a=nums(v.s);if(!a.length)return '❌ 请输入数字';const mn=Math.min(...a),mx=Math.max(...a);return '最小值：'+fmtn(mn)+'\n最大值：'+fmtn(mx)+'\n极差：'+fmtn(mx-mn);});
+mk('数学','阶乘','n! 大数精确计算',[F.num('n','n',20)],v=>{const n=parseInt(v.n)||0;if(n<0||n>1000)return '❌ 请输入 0-1000 的整数';let r=1n;for(let i=2n;i<=BigInt(n);i++)r*=i;const s=r.toString();return n+'! = '+(s.length>60?s.slice(0,30)+'…'+s.slice(-30)+'（共 '+s.length+' 位）':s);});
+mk('数学','斐波那契','第 n 个斐波那契数',[F.num('n','n',50)],v=>{const n=parseInt(v.n)||0;if(n<0||n>5000)return '❌ 请输入 0-5000 的整数';let a=0n,b=1n;for(let i=0;i<n;i++)[a,b]=[b,a+b];const s=a.toString();return 'F('+n+') = '+(s.length>60?s.slice(0,30)+'…'+s.slice(-30)+'（共 '+s.length+' 位）':s);});
+mk('数学','质数判断','判断是否为质数',[F.num('n','整数',97)],v=>{const n=parseInt(v.n)||0;if(n<2)return n+' 不是质数（质数 ≥ 2）';if(n%2===0&&n!==2)return n+' 不是质数（可被 2 整除）';for(let i=3;i*i<=n;i+=2)if(n%i===0)return n+' 不是质数（可被 '+i+' 整除）';return n+' 是质数 ✅';});
+mk('数学','质因数分解','分解为质数乘积',[F.num('n','整数',360)],v=>{let n=parseInt(v.n)||0;if(n<2||n>1e12)return '❌ 请输入 2 到 10^12 的整数';const orig=n,out=[];for(let d=2;d*d<=n;d++){let k=0;while(n%d===0){n/=d;k++;}if(k)out.push(d+(k>1?'^'+k:''));}if(n>1)out.push(String(n));return orig+' = '+out.join(' × ');});
+mk('数学','最大公约数','多个数的 GCD',[F.ta('s','数字（空格/逗号分隔）','48 36 24')],v=>{const a=nums(v.s).map(Math.abs).filter(x=>Number.isInteger(x));if(a.length<2)return '❌ 至少需要两个整数';return 'GCD = '+a.reduce((x,y)=>gcdF(x,y));});
+mk('数学','最小公倍数','多个数的 LCM',[F.ta('s','数字（空格/逗号分隔）','4 6 8')],v=>{const a=nums(v.s).map(Math.abs).filter(x=>Number.isInteger(x)&&x>0);if(a.length<2)return '❌ 至少需要两个正整数';let r=a[0];for(let i=1;i<a.length;i++)r=r/gcdF(r,a[i])*a[i];return 'LCM = '+fmtn(r);});
+mk('数学','排列数','A(n,r) = n!/(n-r)!',[F.num('n','n',10),F.num('r','r',3)],v=>{const n=parseInt(v.n)||0,r=parseInt(v.r)||0;if(r<0||n<0||r>n)return '❌ 需满足 0 ≤ r ≤ n';let res=1n;for(let i=0n;i<BigInt(r);i++)res*=BigInt(n)-i;return 'A('+n+', '+r+') = '+res;});
+mk('数学','组合数','C(n,r) = n!/(r!(n-r)!)',[F.num('n','n',10),F.num('r','r',3)],v=>{const n=parseInt(v.n)||0,r=parseInt(v.r)||0;if(r<0||n<0||r>n)return '❌ 需满足 0 ≤ r ≤ n';const rr=Math.min(r,n-r);let res=1n;for(let i=0n;i<BigInt(rr);i++)res=res*(BigInt(n)-i)/(i+1n);return 'C('+n+', '+r+') = '+res;});
+mk('数学','一元二次方程','ax²+bx+c=0 求根',[F.num('a','a',1),F.num('b','b',-3),F.num('c','c',2)],v=>{const a=parseFloat(v.a)||0,b=parseFloat(v.b)||0,c=parseFloat(v.c)||0;if(a===0)return b===0?(c===0?'任意 x 都成立':'无解'):'一次方程 x = '+fmtn(-c/b);const D=b*b-4*a*c;if(D>0)return 'Δ = '+fmtn(D)+' > 0，两个实根：\nx₁ = '+fmtn((-b+Math.sqrt(D))/(2*a))+'\nx₂ = '+fmtn((-b-Math.sqrt(D))/(2*a));if(D===0)return 'Δ = 0，唯一实根：\nx = '+fmtn(-b/(2*a));return 'Δ = '+fmtn(D)+' < 0，无实根，复根：\nx = '+fmtn(-b/(2*a))+' ± '+fmtn(Math.sqrt(-D)/(2*a))+'i';});
+mk('数学','三角函数','度 → sin/cos/tan',[F.num('v','角度（度）',30)],v=>{const deg=parseFloat(v.v)||0,rad=deg*Math.PI/180;return deg+'° = '+fmtn(rad)+' 弧度\nsin = '+fmtn(Math.sin(rad))+'\ncos = '+fmtn(Math.cos(rad))+'\ntan = '+(Math.abs(Math.cos(rad))<1e-12?'不存在（90°的奇数倍）':fmtn(Math.tan(rad)));});
+mk('数学','对数计算','log / ln / log10',[F.num('v','真数',100),F.num('b','底数',2)],v=>{const x=parseFloat(v.v),b=parseFloat(v.b);if(!(x>0)||!(b>0)||b===1)return '❌ 真数需 > 0，底数需 > 0 且 ≠ 1';return 'log('+b+')('+x+') = '+fmtn(Math.log(x)/Math.log(b))+'\nln('+x+') = '+fmtn(Math.log(x))+'\nlog10('+x+') = '+fmtn(Math.log10(x));});
+mk('数学','幂与开方','a^b 与 a 的 b 次方根',[F.num('a','a',8),F.num('b','b',3)],v=>{const a=parseFloat(v.a),b=parseFloat(v.b);if(!isFinite(a)||!isFinite(b))return '❌ 请输入数字';const root=b%2===1&&a<0?-Math.pow(-a,1/b):Math.pow(a,1/b);return 'a^b = '+fmtn(Math.pow(a,b))+'\n'+(a<0&&b%2!==1?'（负数偶数次方根无实数解）':'a 的 b 次方根 = '+fmtn(root));});
+mk('数学','三角形面积','三边求面积（海伦公式）',[F.num('a','边 a',3),F.num('b','边 b',4),F.num('c','边 c',5)],v=>{const a=parseFloat(v.a),b=parseFloat(v.b),c=parseFloat(v.c);if(!(a>0&&b>0&&c>0))return '❌ 边长需为正数';if(a+b<=c||a+c<=b||b+c<=a)return '❌ 无法构成三角形（任意两边之和需大于第三边）';const s=(a+b+c)/2;return '周长 = '+fmtn(a+b+c)+'\n面积 = '+fmtn(Math.sqrt(s*(s-a)*(s-b)*(s-c)));});
+mk('数学','圆的计算','半径 → 面积/周长',[F.num('r','半径',5)],v=>{const r=parseFloat(v.r);if(!(r>0))return '❌ 半径需为正数';return '直径 = '+fmtn(2*r)+'\n周长 = '+fmtn(2*Math.PI*r)+'\n面积 = '+fmtn(Math.PI*r*r);});
+mk('数学','圆柱计算','半径+高 → 体积/表面积',[F.num('r','底面半径',3),F.num('h','高',10)],v=>{const r=parseFloat(v.r),h=parseFloat(v.h);if(!(r>0&&h>0))return '❌ 参数需为正数';return '底面积 = '+fmtn(Math.PI*r*r)+'\n侧面积 = '+fmtn(2*Math.PI*r*h)+'\n表面积 = '+fmtn(2*Math.PI*r*r+2*Math.PI*r*h)+'\n体积 = '+fmtn(Math.PI*r*r*h);});
+mk('数学','球体计算','半径 → 体积/表面积',[F.num('r','半径',5)],v=>{const r=parseFloat(v.r);if(!(r>0))return '❌ 半径需为正数';return '表面积 = '+fmtn(4*Math.PI*r*r)+'\n体积 = '+fmtn(4/3*Math.PI*r*r*r);});
+mk('数学','BMI计算','身高体重 → BMI 指数',[F.num('h','身高（cm）',170),F.num('w','体重（kg）',65)],v=>{const h=parseFloat(v.h)/100,w=parseFloat(v.w);if(!(h>0&&w>0))return '❌ 请输入身高体重';const bmi=w/(h*h);const lv=bmi<18.5?'偏瘦（建议增重）':bmi<24?'正常 👍':bmi<28?'超重':'肥胖（建议控制）';return 'BMI = '+r2(bmi)+'\n中国标准：'+lv+'\n（参考：<18.5 偏瘦 / 18.5-23.9 正常 / 24-27.9 超重 / ≥28 肥胖）';});
+mk('数学','基础代谢率','Mifflin-St Jeor 公式 + 活动系数',[F.sel('g','性别',[['m','男'],['f','女']]),F.num('w','体重（kg）',65),F.num('h','身高（cm）',170),F.num('a','年龄',28),F.sel('act','活动水平',[['1.2','久坐（几乎不运动）'],['1.375','轻度（每周1-3次）'],['1.55','中度（每周3-5次）'],['1.725','高强度（每周6-7次）'],['1.9','极高强度']])],v=>{const w=parseFloat(v.w)||0,h=parseFloat(v.h)||0,a=parseFloat(v.a)||0;const bmr=10*w+6.25*h-5*a+(v.g==='m'?5:-161);const tdd=bmr*parseFloat(v.act);return '基础代谢 BMR ≈ '+Math.round(bmr)+' 千卡/天\n每日消耗 TDEE ≈ '+Math.round(tdd)+' 千卡/天\n减脂参考：约 '+Math.round(tdd-400)+' 千卡/天';});
+mk('数学','复利计算','本金×利率×期限',[F.num('p','本金（元）',10000),F.num('r','年利率（%）',3),F.num('y','年限',10),F.sel('m','复利频率',[['1','每年'],['12','每月'],['4','每季'],['365','每日']])],v=>{const p=parseFloat(v.p)||0,r=parseFloat(v.r)/100||0,y=parseFloat(v.y)||0,m=+v.m;const rate=r/m,n=y*m;const final=p*Math.pow(1+rate,n);return '到期本息：'+r2(final)+' 元\n利息收益：'+r2(final-p)+' 元\n（复利 '+n+' 期，单期利率 '+(rate*100).toFixed(4)+'%）';});
+mk('数学','房贷月供','等额本息月供计算',[F.num('p','贷款金额（万元）',100),F.num('r','年利率（%）',4.2),F.num('y','年限',30)],v=>{const P=(parseFloat(v.p)||0)*10000,rate=(parseFloat(v.r)||0)/100/12,n=(parseFloat(v.y)||0)*12;if(!(P>0&&n>0))return '❌ 请输入有效金额和年限';const m=rate===0?P/n:P*rate*Math.pow(1+rate,n)/(Math.pow(1+rate,n)-1);return '等额本息月供：'+r2(m)+' 元\n还款总额：'+r2(m*n)+' 元\n总利息：'+r2(m*n-P)+' 元';});
+/* ================= ⑧ 生活实用（23） ================= */
+mk('生活','随机数生成','随机整数（含端点）',[F.num('a','最小值',1),F.num('b','最大值',100)],v=>{let a=parseInt(v.a)||0,b=parseInt(v.b)||0;if(a>b)[a,b]=[b,a];return '🎲 随机数（'+a+' ~ '+b+'）：\n'+ri(a,b);});
+mk('生活','掷骰子','掷一颗六面骰',[],()=>'🎲 骰子结果：'+ri(1,6)+' 点');
+mk('生活','抛硬币','正反面随机',[],()=>'🪙 结果：'+(Math.random()<0.5?'正面':'反面'));
+mk('生活','抽签选一个','从列表中随机抽 1 个',[F.ta('s','候选项（每行一个）','火锅\n烧烤\n日料\n汉堡\n面条')],v=>{const a=v.s.split('\n').map(x=>x.trim()).filter(Boolean);if(!a.length)return '❌ 请输入候选项';return '🎯 抽中：'+pick(a)+'\n（共 '+a.length+' 个候选项）';});
+mk('生活','抽奖抽多个','从列表中随机抽 N 个',[F.ta('s','候选项（每行一个）','张三\n李四\n王五\n赵六\n钱七'),F.num('n','抽取数量',3)],v=>{const a=v.s.split('\n').map(x=>x.trim()).filter(Boolean);const n=parseInt(v.n)||1;if(!a.length)return '❌ 请输入候选项';if(n>a.length)return '❌ 抽取数量不能超过候选项数量（'+a.length+'）';return '🎉 抽中 '+n+' 个：\n'+shuffle(a).slice(0,n).join('\n');});
+mk('生活','双色球号码','随机生成 5 注双色球',[],()=>{const out=[];for(let k=0;k<5;k++){const reds=shuffle(Array.from({length:33},(_,i)=>i+1)).slice(0,6).sort((a,b)=>a-b);out.push('第 '+(k+1)+' 注：'+reds.map(x=>String(x).padStart(2,'0')).join(' ')+'  +  '+String(ri(1,16)).padStart(2,'0'));}return out.join('\n')+'\n\n※ 纯随机生成，仅供娱乐';});
+mk('生活','日期倒计时','距离目标日期还有多久',[F.in('d','目标日期','2025-01-01')],v=>{const d=pd(v.d);if(!d)return '❌ 日期格式应为 YYYY-MM-DD';const n=new Date();const today=new Date(n.getFullYear(),n.getMonth(),n.getDate());const days=Math.round((new Date(d.getFullYear(),d.getMonth(),d.getDate())-today)/864e5);if(days>0)return '距 '+fmtD(d)+'（周'+W[d.getDay()]+'）还有 '+days+' 天\n约 '+(days/7).toFixed(1)+' 周（'+Math.floor(days/7)+' 周零 '+(days%7)+' 天）';if(days===0)return '就是今天！（周'+W[d.getDay()]+'）🎉';return '该日期已过去 '+(-days)+' 天（当天为周'+W[d.getDay()]+'）';});
+mk('生活','得分率计算','得分/总分 → 得分率与等级',[F.num('s','得分',88),F.num('t','总分',100)],v=>{const s=parseFloat(v.s)||0,t=parseFloat(v.t)||0;if(t<=0)return '❌ 总分需大于 0';const r=s/t*100;const lv=r>=90?'优秀 A':r>=80?'良好 B':r>=70?'中等 C':r>=60?'及格 D':'不及格 E';return '得分率：'+r2(r)+'%（百分制：'+r2(r)+' 分）\n等级：'+lv+'\n失分：'+fmtn(t-s)+' 分';});
+mk('生活','GPA换算','百分制成绩 → 4.0 制 GPA',[F.ta('s','成绩（空格/逗号/换行分隔）','92 85 78 90 85')],v=>{const a=nums(v.s);if(!a.length)return '❌ 请输入成绩';const pts=a.map(s=>s>=90?4:s>=85?3.7:s>=82?3.3:s>=78?3:s>=75?2.7:s>=72?2.3:s>=68?2:s>=64?1.5:s>=60?1:0);const avg=a.reduce((x,y)=>x+y,0)/a.length;const g=pts.reduce((x,y)=>x+y,0)/pts.length;return '成绩数：'+a.length+'\n平均分：'+r2(avg)+'\nGPA（4.0制）：'+r2(g)+'\n\n各成绩 → 绩点：\n'+a.map((s,i)=>s+' → '+pts[i].toFixed(1)).join('\n')+'\n\n※ 采用常见换算表，各校标准可能不同';});
+mk('生活','每日饮水量','按体重估算建议饮水量',[F.num('w','体重（kg）',65)],v=>{const w=parseFloat(v.w);if(!(w>0))return '❌ 请输入体重';const ml=w*35;return '建议每日饮水：约 '+r2(ml/1000)+' 升\n≈ '+Math.round(ml/250)+' 杯（250ml/杯）\n运动或高温天可再加 500-1000ml\n※ 按 35ml/kg 估算，仅供参考';});
+mk('生活','睡眠时间计算','按 90 分钟周期倒推入睡时间',[F.in('w','起床时间','07:30')],v=>{const m=/^(\d{1,2})[:：](\d{2})$/.exec(v.w.trim());if(!m)return '❌ 请输入形如 07:30 的时间';const wake=(+m[1]*60+ +m[2]+1440)%1440;const pd2=x=>String(Math.floor(x/60)%24).padStart(2,'0')+':'+String(x%60).padStart(2,'0');const out=['若 '+v.w.trim()+' 起床，建议以下时间入睡（含约15分钟入睡时间）：'];for(let k=6;k>=4;k--){const bed=((wake-(k*90+15))%1440+1440)%1440;out.push('· '+pd2(bed)+'  →  睡 '+k+' 个周期（约 '+(k*1.5)+' 小时）');}return out.join('\n');});
+mk('生活','密码强度检测','评估密码强度并给出建议',[F.ta('s','输入要检测的密码','')],v=>{const p=v.s;if(!p)return '请输入密码';let cs=0;if(/[a-z]/.test(p))cs++;if(/[A-Z]/.test(p))cs++;if(/\d/.test(p))cs++;if(/[^A-Za-z0-9]/.test(p))cs++;let score=Math.min(cs,4)*15;if(p.length>=8)score+=15;else if(p.length>=6)score+=8;if(p.length>=12)score+=15;if(p.length>=16)score+=10;if(/^(.)\1+$/.test(p)||/^\d+$/.test(p)||/^[a-z]+$/i.test(p))score=Math.min(score,25);if(/password|admin|qwerty|123456|888|666/i.test(p))score=Math.min(score,30);score=Math.min(score,100);const lv=score<30?'很弱 😱':score<50?'弱 😐':score<70?'一般 🙂':score<90?'较强 💪':'非常强 🛡️';const tips=[];if(p.length<12)tips.push('· 建议加长到 12 位以上');if(cs<3)tips.push('· 建议混合大小写/数字/符号');if(/^[a-z]+$/i.test(p)||/^\d+$/.test(p))tips.push('· 避免纯字母或纯数字');return '强度评分：'+score+' / 100 —— '+lv+'\n长度：'+p.length+' 位\n字符类型：'+cs+' 类（小写/大写/数字/符号）\n'+(tips.length?'\n建议：\n'+tips.join('\n'):'\n不错，继续保持！');});
+mk('生活','手机号掩码','隐私脱敏：138****1234',[F.ta('s','包含手机号的文本','联系电话：13812345678')],v=>v.s.replace(/\b(1[3-9]\d)\d{4}(\d{4})\b/g,'$1****$2'));
+mk('生活','身份证校验','18位身份证号合法性校验',[F.in('s','身份证号','11010519491231002X')],v=>idCheck(v.s));
+mk('生活','银行卡号校验','Luhn 算法校验卡号',[F.in('s','卡号','4532015112830366')],v=>luhn(v.s));
+mk('生活','ISBN校验','图书 ISBN-10/13 校验',[F.in('s','ISBN','978-0-306-40615-7')],v=>isbn(v.s));
+mk('生活','IP地址校验','验证 IPv4 并判断内外网',[F.in('s','IP 地址','192.168.1.1')],v=>{const t=v.s.trim();const m=/^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/.exec(t);if(!m)return '❌ 不是合法的 IPv4 格式';const seg=m.slice(1).map(Number);if(seg.some(x=>x>255))return '❌ 每段数值不能超过 255';const[a,b]=seg;let type='公网 IP';if(a===10||(a===172&&b>=16&&b<=31)||(a===192&&b===168))type='内网（私有）地址';else if(a===127)type='本机回环地址';else if(a===169&&b===254)type='链路本地地址';else if(a>=224)type='组播/保留地址';return '✅ 合法 IPv4：'+seg.join('.')+'\n类型：'+type;});
+mk('生活','邮箱格式校验','检查邮箱格式是否规范',[F.in('s','邮箱','hello@example.com')],v=>{const t=v.s.trim();const ok=/^[\w.%+-]+@[\w-]+(\.[\w-]+)+$/.test(t)&&!/\.\./.test(t);return ok?'✅ 格式正确：'+t:'❌ 邮箱格式不正确';});
+mk('生活','纸张尺寸表','常用纸张规格速查',[],()=>['A0  841 × 1189 mm','A1  594 × 841 mm','A2  420 × 594 mm','A3  297 × 420 mm','A4  210 × 297 mm','A5  148 × 210 mm','A6  105 × 148 mm','B5  176 × 250 mm','16开  185 × 260 mm','32开  130 × 184 mm','大32开  140 × 203 mm','名片  90 × 54 mm'].join('\n'));
+mk('生活','烹饪单位换算','杯/汤匙/茶匙/毫升互换',[F.num('v','数量',1),F.sel('u','单位',[['ml','毫升'],['tsp','茶匙'],['tbsp','汤匙'],['cup','杯'],['oz','液量盎司']])],v=>{const u={ml:{n:'毫升',f:1},tsp:{n:'茶匙',f:5},tbsp:{n:'汤匙',f:15},cup:{n:'杯',f:240},oz:{n:'液量盎司',f:29.5735}};const x=parseFloat(v.v)||0;return '换算结果：\n'+fmtU(x*u[v.u].f,u);});
+mk('生活','电费计算','功率×时长×电价',[F.num('p','电器功率（W）',1000),F.num('h','每天使用（小时）',4),F.num('d','天数',30),F.num('r','电价（元/度）',0.6)],v=>{const p=parseFloat(v.p)||0,h=parseFloat(v.h)||0,d=parseFloat(v.d)||0,r=parseFloat(v.r)||0;const kwh=p*h*d/1000;return '总耗电：'+fmtn(kwh)+' 度（kWh）\n电费估算：'+r2(kwh*r)+' 元\n（'+p+'W × '+h+'h/天 × '+d+'天）';});
+mk('生活','工资换算','月薪/日薪/时薪/年薪互算',[F.num('v','数值',10000),F.sel('u','输入类型',[['m','月薪'],['d','日薪'],['h','时薪'],['y','年薪']])],v=>{const x=parseFloat(v.v)||0;let m;if(v.u==='m')m=x;else if(v.u==='d')m=x*21.75;else if(v.u==='h')m=x*21.75*8;else m=x/12;return '按每月 21.75 个工作日、每日 8 小时估算：\n月薪：'+r2(m)+' 元\n日薪：'+r2(m/21.75)+' 元\n时薪：'+r2(m/21.75/8)+' 元\n年薪：'+r2(m*12)+' 元';});
+mk('生活','油耗换算','L/100km ↔ MPG（美制）',[F.num('v','数值',8),F.sel('m','方向',[['l2m','L/100km → MPG'],['m2l','MPG → L/100km']])],v=>{const x=parseFloat(v.v);if(!(x>0))return '❌ 请输入正数';return v.m==='l2m'?x+' L/100km ≈ '+r2(235.214583/x)+' MPG（美制）':x+' MPG ≈ '+r2(235.214583/x)+' L/100km';});
+/* ================= 界面逻辑 ================= */
+const grid=$('#grid'),cats=$('#cats'),dlg=$('#dlg'),dform=$('#dform'),dtitle=$('#dtitle'),ddesc=$('#ddesc'),dout=$('#dout');
+let cur=null,curCat='全部';
+$('#cnt').textContent=T.length;
+const CATLIST=[...new Set(T.map(t=>t.cat))];
+['全部',...CATLIST].forEach(c=>{const b=document.createElement('button');b.textContent=c+(c==='全部'?'（'+T.length+'）':'（'+T.filter(t=>t.cat===c).length+'）');b.className=c==='全部'?'on':'';b.onclick=()=>{curCat=c;[...cats.children].forEach(x=>x.classList.remove('on'));b.classList.add('on');render();};cats.appendChild(b);});
+function render(){const kw=$('#q').value.trim().toLowerCase();grid.innerHTML='';let n=0;T.forEach((t,i)=>{if(curCat!=='全部'&&t.cat!==curCat)return;if(kw&&!(t.name+t.desc+t.cat).toLowerCase().includes(kw))return;n++;const el=document.createElement('button');el.className='card';const b=document.createElement('b');b.textContent=t.name;const sp=document.createElement('span');sp.textContent=t.desc;const it=document.createElement('i');it.textContent=t.cat;el.append(b,sp,it);el.onclick=()=>openTool(i);grid.appendChild(el);});if(!n){const p=document.createElement('p');p.textContent='没有找到匹配的工具 🤔';p.style.color='var(--sub)';grid.appendChild(p);}}
+$('#q').addEventListener('input',render);
+function renderIns(t){dform.innerHTML='';t.ins.forEach(x=>{if(x.t==='chk'){const lb=document.createElement('label');lb.className='chk';const el=document.createElement('input');el.type='checkbox';el.id='k_'+x.k;el.checked=!!x.v;lb.appendChild(el);lb.appendChild(document.createTextNode(' '+x.l));dform.appendChild(lb);return;}const w=document.createElement('div');w.className='fld';const lb=document.createElement('label');lb.textContent=x.l||x.k;lb.htmlFor='k_'+x.k;w.appendChild(lb);let el;if(x.t==='ta'){el=document.createElement('textarea');el.rows=x.r||6;el.placeholder=x.ph||'在此输入内容…';}else if(x.t==='sel'){el=document.createElement('select');x.o.forEach(o=>{const op=document.createElement('option');op.value=o[0];op.textContent=o[1];el.appendChild(op);});}else{el=document.createElement('input');el.type=x.t==='num'?'number':'text';if(x.v!==undefined)el.value=x.v;el.placeholder=x.ph||'';}el.id='k_'+x.k;w.appendChild(el);dform.appendChild(w);});}
+function openTool(i){cur=T[i];dtitle.textContent=cur.name;ddesc.textContent=cur.desc+'　·　'+cur.cat;renderIns(cur);dout.textContent='结果将显示在这里…';dlg.showModal();const f=dform.querySelector('textarea,input,select');if(f)setTimeout(()=>f.focus(),50);}
+function collect(){const v={};cur.ins.forEach(x=>{const el=$('#k_'+x.k);v[x.k]=x.t==='chk'?el.checked:el.value;});return v;}
+async function run(){if(!cur)return;dout.textContent='计算中…';try{const v=collect();const r=await cur.fn(v);dout.textContent=r==null?'(无输出)':String(r);}catch(e){dout.textContent='❌ 运行出错：'+(e&&e.message?e.message:e);}}
+$('#run').onclick=run;
+$('#clr').onclick=()=>{dform.querySelectorAll('textarea,input[type=text],input[type=number]').forEach(el=>el.value='');dout.textContent='结果将显示在这里…';};
+$('#close').onclick=()=>dlg.close();
+function toast(msg){const t=$('#toast');t.textContent=msg;t.classList.add('show');clearTimeout(toast.tm);toast.tm=setTimeout(()=>t.classList.remove('show'),1600);}
+$('#copy').onclick=()=>{const t=dout.textContent;if(!t||t==='结果将显示在这里…')return;const done=()=>toast('已复制到剪贴板 ✓');if(navigator.clipboard&&window.isSecureContext){navigator.clipboard.writeText(t).then(done).catch(fb);}else fb();function fb(){const ta=document.createElement('textarea');ta.value=t;ta.style.position='fixed';ta.style.opacity='0';document.body.appendChild(ta);ta.select();try{document.execCommand('copy');done();}catch(e){toast('复制失败，请手动选择复制');}ta.remove();}};
+dform.addEventListener('keydown',e=>{if((e.ctrlKey||e.metaKey)&&e.key==='Enter')run();});
+render();
+if(T.length!==200)console.warn('工具数量为 '+T.length+'，与预期的 200 不符');
+document.querySelector('footer').textContent='单文件工具箱 · 共 '+T.length+' 个工具 · 可自由部署到 GitHub Pages · © '+new Date().getFullYear();
+</script>
+<script src="v2.js"></script>
+</body>
+</html>

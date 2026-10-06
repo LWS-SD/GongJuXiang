@@ -1,0 +1,11 @@
+{
+  "name": "全能工具箱",
+  "short_name": "工具箱",
+  "description": "252 个纯前端实用工具，离线可用，数据不上传",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#f5f7fa",
+  "theme_color": "#3b82f6",
+  "icons": [{ "src": "icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" }]
+}
